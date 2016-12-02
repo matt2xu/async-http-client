@@ -1,0 +1,9 @@
+[package]
+name = "async-http-client"
+version = "0.1.0"
+authors = ["Matthieu Wipliez <matthieu.wipliez@harmonicinc.com>"]
+
+[dependencies]
+tokio-core = "0.1"
+futures = "0.1"
+url = "1.0"
