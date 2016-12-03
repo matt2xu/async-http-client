@@ -11,15 +11,15 @@ use futures::Future;
 
 use tokio_core::io::{copy, write_all};
 use tokio_core::net::TcpStream;
-use tokio_core::reactor::Core;
+use tokio_core::reactor::{Core, Handle};
 
 use url::{Url, ParseError};
 
-pub struct HttpRequest<'a> {
+pub struct HttpRequest {
     url: Url,
     method: Method,
-    headers: Vec<(Cow<'a, str>, Cow<'a, str>)>,
-    body: Option<&'a [u8]>
+    headers: Vec<(Cow<'static, str>, Cow<'static, str>)>,
+    body: Vec<u8>
 }
 
 pub enum Method {
@@ -51,8 +51,8 @@ impl fmt::Display for Method {
     }
 }
 
-impl<'a> HttpRequest<'a> {
-    pub fn new<S: AsRef<str>>(url: S) -> Result<HttpRequest<'a>, ParseError> {
+impl HttpRequest {
+    pub fn new<U: AsRef<str>>(url: U) -> Result<HttpRequest, ParseError> {
         url.as_ref().parse().map(|url: Url| {
             use std::fmt::Write;
 
@@ -65,45 +65,30 @@ impl<'a> HttpRequest<'a> {
                 url: url,
                 method: Method::Get,
                 headers: vec![],
-                body: None
+                body: vec![]
             }.header("Host", host)
         })
     }
 
-    pub fn header<I: Into<Cow<'a, str>>>(mut self, name: &'a str, value: I) -> HttpRequest<'a> {
+    pub fn header<K: Into<Cow<'static, str>>, V: Into<Cow<'static, str>>>(mut self, name: K, value: V) -> HttpRequest {
         self.headers.push((name.into(), value.into()));
         self
     }
 
-    pub fn post(self, body: &'a [u8]) -> HttpRequest<'a> {
-        let mut req = self.header("Content-Length", body.len().to_string());
+    pub fn post<U: AsRef<str>, I: Into<Vec<u8>>>(url: U, body: I) -> Result<HttpRequest, ParseError> {
+        let bytes = body.into();
+        let mut req = Self::new(url)?.header("Content-Length", bytes.len().to_string());
         req.method = Method::Post;
-        req.body = Some(body);
-        req
+        req.body = bytes;
+        Ok(req)
     }
 
-    pub fn send(&mut self, core: &mut Core) -> Result<(), io::Error> {
-        let request = self.to_string();
-        println!("{}", request);
-
-        let mut addrs = self.url.to_socket_addrs()?;
-        let addr = addrs.next().unwrap();
-
-        let handle = core.handle();
-        let future = TcpStream::connect(&addr, &handle).and_then(|stream| {
-            write_all(stream, request.as_bytes()).and_then(|(stream, _bytes)| {
-                write_all(stream, self.body.unwrap_or(&[]))
-            }).and_then(|(stream, _bytes)| {
-                copy(stream, io::stdout())
-            }).map(|_| ())
-        });
-
-        core.run(future)
+    pub fn url(&self) -> &Url {
+        &self.url
     }
 }
 
-
-impl<'a> fmt::Display for HttpRequest<'a> {
+impl fmt::Display for HttpRequest {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // request line
         write!(f, "{} {}", self.method, self.url.path())?;
@@ -123,21 +108,52 @@ impl<'a> fmt::Display for HttpRequest<'a> {
     }
 }
 
+pub struct HttpClient {
+    stream: TcpStream
+}
+
+impl HttpClient {
+    pub fn new(core: &mut Core, url: &Url) -> Result<HttpClient, io::Error> {
+        let mut addrs = url.to_socket_addrs()?;
+        let addr = addrs.next().unwrap();
+        let handle = core.handle();
+        Ok(HttpClient {
+           stream: core.run(TcpStream::connect(&addr, &handle))?
+        })
+    }
+
+    pub fn send(&mut self, core: &mut Core, req: HttpRequest) -> Result<(), io::Error> {
+        let request = req.to_string();
+        println!("{}", request);
+
+
+        let future = write_all(&self.stream, request.as_bytes()).and_then(|(stream, _bytes)| {
+                write_all(stream, &req.body)
+            }).and_then(|(stream, _bytes)| {
+                copy(stream, io::stdout())
+            }).map(|_| ());
+
+        core.run(future)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use tokio_core::reactor::Core;
 
-    use HttpRequest;
+    use {HttpRequest, HttpClient};
 
     #[test]
     fn it_works() {
         // Create the event loop that will drive this server
-        let mut core = Core::new().unwrap();
         let string = "http://localhost:3000/segment/chunks".to_string();
-        let req = HttpRequest::new(&string).unwrap();
-        req.header("Content-Type", "text/plain")
-            .header("Connection", "Close")
-            .post(&[1, 2, 3, 4])
-            .send(&mut core).unwrap();
+        let req = HttpRequest::post(&string, vec![1, 2, 3, 4]).unwrap()
+            .header("Content-Type", "text/plain")
+            .header("Connection", "Close");
+
+        let mut core = Core::new().unwrap();
+        HttpClient::new(&mut core, req.url()).map(|mut client| {
+            client.send(&mut core, req)
+        }).unwrap();
     }
 }
