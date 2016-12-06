@@ -4,14 +4,12 @@ extern crate url;
 
 use std::borrow::Cow;
 use std::fmt;
-use std::io;
-use std::net::ToSocketAddrs;
+use std::io::{self, ErrorKind, Write};
+use std::net::{SocketAddr, ToSocketAddrs};
 
-use futures::Future;
+use futures::{Future, Poll, Async};
 
-use tokio_core::io::{copy, write_all};
-use tokio_core::net::TcpStream;
-use tokio_core::reactor::{Core, Handle};
+use tokio_core::io::{EasyBuf, Codec};
 
 use url::{Url, ParseError};
 
@@ -83,8 +81,9 @@ impl HttpRequest {
         Ok(req)
     }
 
-    pub fn url(&self) -> &Url {
-        &self.url
+    pub fn addr(&self) -> Result<SocketAddr, io::Error> {
+        let mut addrs = self.url.to_socket_addrs()?;
+        addrs.next().ok_or(io::Error::new(ErrorKind::UnexpectedEof, "no address"))
     }
 }
 
@@ -108,52 +107,89 @@ impl fmt::Display for HttpRequest {
     }
 }
 
-pub struct HttpClient {
-    stream: TcpStream
+#[derive(Debug)]
+pub struct HttpResponse;
+
+impl Future for HttpResponse {
+    type Item = HttpResponse;
+    type Error = io::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        Ok(Async::Ready(HttpResponse))
+    }
 }
 
-impl HttpClient {
-    pub fn new(core: &mut Core, url: &Url) -> Result<HttpClient, io::Error> {
-        let mut addrs = url.to_socket_addrs()?;
-        let addr = addrs.next().unwrap();
-        let handle = core.handle();
-        Ok(HttpClient {
-           stream: core.run(TcpStream::connect(&addr, &handle))?
-        })
+#[derive(Debug)]
+pub struct HttpCodec;
+
+impl Codec for HttpCodec {
+    type In = HttpResponse;
+    type Out = HttpRequest;
+
+    fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<Self::In>, io::Error> {
+        println!("TODO parse response! {} bytes available", buf.len());
+        Ok(Some(HttpResponse))
     }
 
-    pub fn send(&mut self, core: &mut Core, req: HttpRequest) -> Result<(), io::Error> {
-        let request = req.to_string();
-        println!("{}", request);
-
-
-        let future = write_all(&self.stream, request.as_bytes()).and_then(|(stream, _bytes)| {
-                write_all(stream, &req.body)
-            }).and_then(|(stream, _bytes)| {
-                copy(stream, io::stdout())
-            }).map(|_| ());
-
-        core.run(future)
+    fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()> {
+        println!("encode");
+        write!(buf, "{}", msg)?;
+        buf.extend_from_slice(&msg.body);
+        println!("{:?}", buf);
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
+    extern crate env_logger;
+
+    use std::env;
+
+    use futures::{Future, Sink, Stream};
+
+    use tokio_core::net::TcpStream;
+    use tokio_core::io::Io;
     use tokio_core::reactor::Core;
 
-    use {HttpRequest, HttpClient};
+    use {HttpRequest, HttpCodec};
 
     #[test]
     fn it_works() {
+        env::set_var("RUST_LOG", "TRACE");
+        env_logger::init().unwrap();
+
         // Create the event loop that will drive this server
         let string = "http://localhost:3000/segment/chunks".to_string();
         let req = HttpRequest::post(&string, vec![1, 2, 3, 4]).unwrap()
-            .header("Content-Type", "text/plain")
-            .header("Connection", "Close");
+            .header("Content-Type", "text/plain");
 
         let mut core = Core::new().unwrap();
-        HttpClient::new(&mut core, req.url()).map(|mut client| {
-            client.send(&mut core, req)
-        }).unwrap();
+        let addr = req.addr().unwrap();
+        let handle = core.handle();
+        let tcp_stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();
+        let framed = tcp_stream.framed(HttpCodec);
+
+        let future = framed.send(req);
+        let framed = core.run(future).unwrap();
+
+        let future = framed.into_future().and_then(|(res, framed)| {
+            println!("hello {:?}", res);
+            Ok(framed)
+        });
+        let framed = core.run(future).ok().unwrap();
+
+
+        let req = HttpRequest::post(&string, vec![1, 2, 3]).unwrap()
+            .header("Content-Type", "text/plain");
+
+        let future = framed.send(req);
+        let framed = core.run(future).unwrap();
+
+        let future = framed.into_future().and_then(|(res, framed)| {
+            println!("hello 2 {:?}", res);
+            Ok(framed)
+        });
+        let _ = core.run(future);
     }
 }
