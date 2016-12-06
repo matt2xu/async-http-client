@@ -127,7 +127,7 @@ impl Codec for HttpCodec {
     type Out = HttpRequest;
 
     fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<Self::In>, io::Error> {
-        println!("TODO parse response! {} bytes available", buf.len());
+        println!("------- TODO parse response! {} bytes available", buf.len());
         Ok(Some(HttpResponse))
     }
 
@@ -146,7 +146,7 @@ mod tests {
 
     use std::env;
 
-    use futures::{Future, Sink, Stream};
+    use futures::{Sink, Stream};
 
     use tokio_core::net::TcpStream;
     use tokio_core::io::Io;
@@ -170,26 +170,18 @@ mod tests {
         let tcp_stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();
         let framed = tcp_stream.framed(HttpCodec);
 
-        let future = framed.send(req);
-        let framed = core.run(future).unwrap();
+        let framed = core.run(framed.send(req)).unwrap();
+        let (res, framed) = core.run(framed.into_future()).ok().unwrap();
+        println!("hello 1 {:?}", res);
 
-        let future = framed.into_future().and_then(|(res, framed)| {
-            println!("hello {:?}", res);
-            Ok(framed)
-        });
-        let framed = core.run(future).ok().unwrap();
 
 
         let req = HttpRequest::post(&string, vec![1, 2, 3]).unwrap()
             .header("Content-Type", "text/plain");
 
-        let future = framed.send(req);
-        let framed = core.run(future).unwrap();
+        let framed = core.run(framed.send(req)).unwrap();
 
-        let future = framed.into_future().and_then(|(res, framed)| {
-            println!("hello 2 {:?}", res);
-            Ok(framed)
-        });
-        let _ = core.run(future);
+        let (res, _framed) = core.run(framed.into_future()).ok().unwrap();
+        println!("hello 2 {:?}", res);
     }
 }
