@@ -7,9 +7,9 @@ use std::fmt;
 use std::io::{self, ErrorKind, Write};
 use std::net::{SocketAddr, ToSocketAddrs};
 
-use futures::{Future, Poll, Async};
+use futures::{Future, Poll, Async, Sink, Stream};
 
-use tokio_core::io::{EasyBuf, Codec};
+use tokio_core::io::{EasyBuf, Codec, Framed, Io, IoFuture};
 
 use url::{Url, ParseError};
 
@@ -85,6 +85,16 @@ impl HttpRequest {
         let mut addrs = self.url.to_socket_addrs()?;
         addrs.next().ok_or(io::Error::new(ErrorKind::UnexpectedEof, "no address"))
     }
+
+    /// Returns a future that, given a framed, will resolve to a tuple (response?, framed).
+    pub fn send<T: 'static + Io + Send>(self, framed: Framed<T, HttpCodec>) -> IoFuture<(Option<HttpResponse>, Framed<T, HttpCodec>)> {
+        framed.send(self).and_then(|framed| {
+            framed.into_future().and_then(|(res, stream)| {
+                println!("for each {:?}", res);
+                Ok((res, stream))
+            }).map_err(|(err, _stream)| err)
+        }).boxed()
+    }
 }
 
 impl fmt::Display for HttpRequest {
@@ -120,7 +130,15 @@ impl Future for HttpResponse {
 }
 
 #[derive(Debug)]
-pub struct HttpCodec;
+pub struct HttpCodec {
+    parsed: bool
+}
+
+impl HttpCodec {
+    pub fn new() -> HttpCodec {
+        HttpCodec {parsed: false}
+    }
+}
 
 impl Codec for HttpCodec {
     type In = HttpResponse;
@@ -133,6 +151,7 @@ impl Codec for HttpCodec {
             Ok(None)
         } else {
             buf.drain_to(len);
+            self.parsed = true;
             Ok(Some(HttpResponse))
         }
     }
@@ -162,27 +181,30 @@ mod tests {
 
     use {HttpRequest, HttpCodec};
 
-    //#[test]
-    fn collect_one() {
-        //env::set_var("RUST_LOG", "TRACE");
-        //env_logger::init().unwrap();
+    /*#[test]
+    fn test() {
+        use futures::sync::mpsc;
 
-        // Create the event loop that will drive this server
-        let string = "http://localhost:3000/segment/chunks".to_string();
-        let req = HttpRequest::post(&string, vec![1, 2, 3, 4]).unwrap()
-            .header("Content-Type", "text/plain")
-            .header("Connection", "Close");
+        let (tx1, rx1) = mpsc::channel::<i32>(1);
+        let (tx2, rx2) = mpsc::channel::<i32>(1);
+        let (tx3, rx3) = mpsc::channel(1);
 
-        let mut core = Core::new().unwrap();
-        let addr = req.addr().unwrap();
-        let handle = core.handle();
-        let tcp_stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();
-        let framed = tcp_stream.framed(HttpCodec);
+        thread::spawn(move || {
+            tx1.send(1).wait().unwrap()
+               .send(2).wait().unwrap();
+        });
+        thread::spawn(|| {
+            tx2.send(3).wait().unwrap()
+               .send(4).wait().unwrap();
+        });
+        thread::spawn(|| {
+            tx3.send(rx1).wait().unwrap()
+               .send(rx2).wait().unwrap();
+        });
 
-        // collect a single response since we use Connection: Close
-        let res = core.run(framed.send(req).and_then(|framed| framed.collect())).unwrap();
-        println!("hello collect {:?}", res);
-    }
+        let mut result = rx3.flatten().collect();
+        assert_eq!(result.wait(), Ok(vec![1, 2, 3, 4]));
+    }*/
 
     //#[test]
     fn for_each() {
@@ -195,7 +217,7 @@ mod tests {
         let addr = req.addr().unwrap();
         let handle = core.handle();
         let tcp_stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();
-        let framed = tcp_stream.framed(HttpCodec);
+        let framed = tcp_stream.framed(HttpCodec::new());
 
         // collect a single response since we use Connection: Close
         let (sink, stream) = framed.split();
@@ -210,7 +232,7 @@ mod tests {
         })).unwrap();
     }
 
-    #[test]
+    //#[test]
     fn channel() {
         use std::sync::mpsc;
 
@@ -223,7 +245,7 @@ mod tests {
         let addr = req.addr().unwrap();
         let handle = core.handle();
         let tcp_stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();
-        let framed = tcp_stream.framed(HttpCodec);
+        let framed = tcp_stream.framed(HttpCodec::new());
 
         let (sender, receiver) = mpsc::channel();
 
@@ -232,7 +254,7 @@ mod tests {
                 let url = "http://localhost:3000/segment/chunks";
                 let req = HttpRequest::post(url, vec![1, 2, 3]).unwrap()
                     .header("Content-Type", "text/plain");
-                sender.send(req);
+                sender.send(req).unwrap();
                 thread::sleep(Duration::from_secs(1));
             }
         });
@@ -249,7 +271,7 @@ mod tests {
         })).unwrap();
     }
 
-    //#[test]
+    #[test]
     fn two_frames() {
         // Create the event loop that will drive this server
         let string = "http://localhost:3000/segment/chunks".to_string();
@@ -260,20 +282,15 @@ mod tests {
         let addr = req.addr().unwrap();
         let handle = core.handle();
         let tcp_stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();
-        let framed = tcp_stream.framed(HttpCodec);
+        let framed = tcp_stream.framed(HttpCodec::new());
 
-        let framed = core.run(framed.send(req)).unwrap();
-        let (res, framed) = core.run(framed.into_future()).ok().unwrap();
+        let (res, framed) = core.run(req.send(framed)).unwrap();
         println!("hello 1 {:?}", res);
-
-
 
         let req = HttpRequest::post(&string, vec![1, 2, 3]).unwrap()
             .header("Content-Type", "text/plain");
 
-        let framed = core.run(framed.send(req)).unwrap();
-
-        let (res, _framed) = core.run(framed.into_future()).ok().unwrap();
+        let (res, _framed) = core.run(req.send(framed)).unwrap();
         println!("hello 2 {:?}", res);
     }
 }
