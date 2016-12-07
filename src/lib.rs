@@ -151,6 +151,8 @@ mod tests {
     extern crate env_logger;
 
     //use std::env;
+    use std::thread;
+    use std::time::Duration;
 
     use futures::{Future, Sink, Stream};
 
@@ -160,7 +162,7 @@ mod tests {
 
     use {HttpRequest, HttpCodec};
 
-    #[test]
+    //#[test]
     fn collect_one() {
         //env::set_var("RUST_LOG", "TRACE");
         //env_logger::init().unwrap();
@@ -182,13 +184,73 @@ mod tests {
         println!("hello collect {:?}", res);
     }
 
-    #[test]
+    //#[test]
     fn for_each() {
-        println!("TODO send multiple requests in future loop");
+        // Create the event loop that will drive this server
+        let string = "http://localhost:3000/segment/chunks".to_string();
+        let req = HttpRequest::post(&string, vec![1, 2, 3, 4]).unwrap()
+            .header("Content-Type", "text/plain");
+
+        let mut core = Core::new().unwrap();
+        let addr = req.addr().unwrap();
+        let handle = core.handle();
+        let tcp_stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();
+        let framed = tcp_stream.framed(HttpCodec);
+
+        // collect a single response since we use Connection: Close
+        let (sink, stream) = framed.split();
+        let sink = core.run(sink.send(req).and_then(|sink| {
+            stream.fold(sink, |sink, res| {
+                println!("for each {:?}", res);
+                thread::sleep(Duration::from_secs(1));
+                let url = "http://localhost:3000/segment/chunks";
+                sink.send(HttpRequest::post(url, vec![1, 2, 3]).unwrap()
+                    .header("Content-Type", "text/plain"))
+            })
+        })).unwrap();
     }
 
     #[test]
-    fn it_works() {
+    fn channel() {
+        use std::sync::mpsc;
+
+        // Create the event loop that will drive this server
+        let string = "http://localhost:3000/segment/chunks".to_string();
+        let req = HttpRequest::post(&string, vec![1, 2, 3, 4]).unwrap()
+            .header("Content-Type", "text/plain");
+
+        let mut core = Core::new().unwrap();
+        let addr = req.addr().unwrap();
+        let handle = core.handle();
+        let tcp_stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();
+        let framed = tcp_stream.framed(HttpCodec);
+
+        let (sender, receiver) = mpsc::channel();
+
+        thread::spawn(move || {
+            loop {
+                let url = "http://localhost:3000/segment/chunks";
+                let req = HttpRequest::post(url, vec![1, 2, 3]).unwrap()
+                    .header("Content-Type", "text/plain");
+                sender.send(req);
+                thread::sleep(Duration::from_secs(1));
+            }
+        });
+
+        // collect a single response since we use Connection: Close
+        let req = receiver.recv().unwrap();
+        let (sink, stream) = framed.split();
+        let framed = core.run(sink.send(req).and_then(|sink| {
+            stream.fold(sink, |sink, res| {
+                println!("channel {:?}", res);
+                let req = receiver.recv().unwrap();
+                sink.send(req)
+            })
+        })).unwrap();
+    }
+
+    //#[test]
+    fn two_frames() {
         // Create the event loop that will drive this server
         let string = "http://localhost:3000/segment/chunks".to_string();
         let req = HttpRequest::post(&string, vec![1, 2, 3, 4]).unwrap()
