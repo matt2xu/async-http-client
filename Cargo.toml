@@ -6,6 +6,7 @@ authors = ["Matthieu Wipliez <matthieu.wipliez@harmonicinc.com>"]
 [dependencies]
 tokio-core = "0.1"
 futures = "0.1"
+nom = "2.0"
 url = "1.0"
 
 [dev-dependencies]

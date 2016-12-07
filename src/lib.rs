@@ -2,16 +2,21 @@ extern crate futures;
 extern crate tokio_core;
 extern crate url;
 
+#[macro_use]
+extern crate nom;
+
 use std::borrow::Cow;
 use std::fmt;
 use std::io::{self, ErrorKind, Write};
 use std::net::{SocketAddr, ToSocketAddrs};
 
-use futures::{Future, Poll, Async, Sink, Stream};
+use futures::{Future, Sink, Stream};
 
 use tokio_core::io::{EasyBuf, Codec, Framed, Io, IoFuture};
 
 use url::{Url, ParseError};
+
+pub mod parser;
 
 pub struct HttpRequest {
     url: Url,
@@ -119,15 +124,6 @@ impl fmt::Display for HttpRequest {
 
 #[derive(Debug)]
 pub struct HttpResponse;
-
-impl Future for HttpResponse {
-    type Item = HttpResponse;
-    type Error = io::Error;
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        Ok(Async::Ready(HttpResponse))
-    }
-}
 
 #[derive(Debug)]
 pub struct HttpCodec {
