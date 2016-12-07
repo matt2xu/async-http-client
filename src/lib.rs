@@ -127,8 +127,14 @@ impl Codec for HttpCodec {
     type Out = HttpRequest;
 
     fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<Self::In>, io::Error> {
-        println!("------- TODO parse response! {} bytes available", buf.len());
-        Ok(Some(HttpResponse))
+        let len = buf.len();
+        println!("------- TODO parse response! {} bytes available", len);
+        if len == 0 {
+            Ok(None)
+        } else {
+            buf.drain_to(len);
+            Ok(Some(HttpResponse))
+        }
     }
 
     fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()> {
@@ -144,9 +150,9 @@ impl Codec for HttpCodec {
 mod tests {
     extern crate env_logger;
 
-    use std::env;
+    //use std::env;
 
-    use futures::{Sink, Stream};
+    use futures::{Future, Sink, Stream};
 
     use tokio_core::net::TcpStream;
     use tokio_core::io::Io;
@@ -155,10 +161,34 @@ mod tests {
     use {HttpRequest, HttpCodec};
 
     #[test]
-    fn it_works() {
-        env::set_var("RUST_LOG", "TRACE");
-        env_logger::init().unwrap();
+    fn collect_one() {
+        //env::set_var("RUST_LOG", "TRACE");
+        //env_logger::init().unwrap();
 
+        // Create the event loop that will drive this server
+        let string = "http://localhost:3000/segment/chunks".to_string();
+        let req = HttpRequest::post(&string, vec![1, 2, 3, 4]).unwrap()
+            .header("Content-Type", "text/plain")
+            .header("Connection", "Close");
+
+        let mut core = Core::new().unwrap();
+        let addr = req.addr().unwrap();
+        let handle = core.handle();
+        let tcp_stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();
+        let framed = tcp_stream.framed(HttpCodec);
+
+        // collect a single response since we use Connection: Close
+        let res = core.run(framed.send(req).and_then(|framed| framed.collect())).unwrap();
+        println!("hello collect {:?}", res);
+    }
+
+    #[test]
+    fn for_each() {
+        println!("TODO send multiple requests in future loop");
+    }
+
+    #[test]
+    fn it_works() {
         // Create the event loop that will drive this server
         let string = "http://localhost:3000/segment/chunks".to_string();
         let req = HttpRequest::post(&string, vec![1, 2, 3, 4]).unwrap()
