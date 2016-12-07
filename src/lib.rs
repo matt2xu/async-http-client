@@ -174,6 +174,7 @@ mod tests {
     use std::time::Duration;
 
     use futures::{Future, Sink, Stream};
+    use futures::sync::mpsc;
 
     use tokio_core::net::TcpStream;
     use tokio_core::io::Io;
@@ -181,61 +182,8 @@ mod tests {
 
     use {HttpRequest, HttpCodec};
 
-    /*#[test]
-    fn test() {
-        use futures::sync::mpsc;
-
-        let (tx1, rx1) = mpsc::channel::<i32>(1);
-        let (tx2, rx2) = mpsc::channel::<i32>(1);
-        let (tx3, rx3) = mpsc::channel(1);
-
-        thread::spawn(move || {
-            tx1.send(1).wait().unwrap()
-               .send(2).wait().unwrap();
-        });
-        thread::spawn(|| {
-            tx2.send(3).wait().unwrap()
-               .send(4).wait().unwrap();
-        });
-        thread::spawn(|| {
-            tx3.send(rx1).wait().unwrap()
-               .send(rx2).wait().unwrap();
-        });
-
-        let mut result = rx3.flatten().collect();
-        assert_eq!(result.wait(), Ok(vec![1, 2, 3, 4]));
-    }*/
-
-    //#[test]
-    fn for_each() {
-        // Create the event loop that will drive this server
-        let string = "http://localhost:3000/segment/chunks".to_string();
-        let req = HttpRequest::post(&string, vec![1, 2, 3, 4]).unwrap()
-            .header("Content-Type", "text/plain");
-
-        let mut core = Core::new().unwrap();
-        let addr = req.addr().unwrap();
-        let handle = core.handle();
-        let tcp_stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();
-        let framed = tcp_stream.framed(HttpCodec::new());
-
-        // collect a single response since we use Connection: Close
-        let (sink, stream) = framed.split();
-        let sink = core.run(sink.send(req).and_then(|sink| {
-            stream.fold(sink, |sink, res| {
-                println!("for each {:?}", res);
-                thread::sleep(Duration::from_secs(1));
-                let url = "http://localhost:3000/segment/chunks";
-                sink.send(HttpRequest::post(url, vec![1, 2, 3]).unwrap()
-                    .header("Content-Type", "text/plain"))
-            })
-        })).unwrap();
-    }
-
-    //#[test]
+    #[test]
     fn channel() {
-        use std::sync::mpsc;
-
         // Create the event loop that will drive this server
         let string = "http://localhost:3000/segment/chunks".to_string();
         let req = HttpRequest::post(&string, vec![1, 2, 3, 4]).unwrap()
@@ -247,27 +195,24 @@ mod tests {
         let tcp_stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();
         let framed = tcp_stream.framed(HttpCodec::new());
 
-        let (sender, receiver) = mpsc::channel();
+        let (mut sender, receiver) = mpsc::channel(1);
 
-        thread::spawn(move || {
-            loop {
+        thread::spawn(|| {
+            for i in 0 .. 4 {
                 let url = "http://localhost:3000/segment/chunks";
-                let req = HttpRequest::post(url, vec![1, 2, 3]).unwrap()
+                let elements = (0 .. (i + 1)).collect::<Vec<_>>();
+                let req = HttpRequest::post(url, elements).unwrap()
                     .header("Content-Type", "text/plain");
-                sender.send(req).unwrap();
+                sender = sender.send(req).wait().unwrap();
                 thread::sleep(Duration::from_secs(1));
             }
         });
 
-        // collect a single response since we use Connection: Close
-        let req = receiver.recv().unwrap();
-        let (sink, stream) = framed.split();
-        let framed = core.run(sink.send(req).and_then(|sink| {
-            stream.fold(sink, |sink, res| {
-                println!("channel {:?}", res);
-                let req = receiver.recv().unwrap();
-                sink.send(req)
-            })
+        let _framed = core.run(receiver.fold(framed, |framed, req| {
+            req.send(framed).and_then(|(res, framed)| {
+                println!("channel got response {:?}", res);
+                Ok(framed)
+            }).map_err(|_| ())
         })).unwrap();
     }
 
