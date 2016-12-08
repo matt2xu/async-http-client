@@ -140,7 +140,7 @@ impl Codec for HttpCodec {
     type In = HttpResponse;
     type Out = HttpRequest;
 
-    fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<Self::In>, io::Error> {
+    fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<HttpResponse>, io::Error> {
         let len = buf.len();
         println!("------- TODO parse response! {} bytes available", len);
         if len == 0 {
@@ -152,11 +152,9 @@ impl Codec for HttpCodec {
         }
     }
 
-    fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()> {
-        println!("encode");
+    fn encode(&mut self, msg: HttpRequest, buf: &mut Vec<u8>) -> io::Result<()> {
         write!(buf, "{}", msg)?;
         buf.extend_from_slice(&msg.body);
-        println!("{:?}", buf);
         Ok(())
     }
 }
@@ -200,7 +198,7 @@ mod tests {
                 let req = HttpRequest::post(url, elements).unwrap()
                     .header("Content-Type", "text/plain");
                 sender = sender.send(req).wait().unwrap();
-                thread::sleep(Duration::from_secs(1));
+                thread::sleep(Duration::from_millis(100));
             }
         });
 
