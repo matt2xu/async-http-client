@@ -164,6 +164,7 @@ mod tests {
     extern crate env_logger;
 
     //use std::env;
+    use std::io::{self, ErrorKind};
     use std::thread;
     use std::time::Duration;
 
@@ -186,8 +187,6 @@ mod tests {
         let mut core = Core::new().unwrap();
         let addr = req.addr().unwrap();
         let handle = core.handle();
-        let tcp_stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();
-        let framed = tcp_stream.framed(HttpCodec::new());
 
         let (mut sender, receiver) = mpsc::channel(1);
 
@@ -202,11 +201,15 @@ mod tests {
             }
         });
 
-        let _framed = core.run(receiver.fold(framed, |framed, req| {
-            req.send(framed).and_then(|(res, framed)| {
-                println!("channel got response {:?}", res);
-                Ok(framed)
-            }).map_err(|_| ())
+
+        let _framed = core.run(TcpStream::connect(&addr, &handle).and_then(|connection| {
+            let framed = connection.framed(HttpCodec::new());
+            receiver.fold(framed, |framed, req| {
+                req.send(framed).and_then(|(res, framed)| {
+                    println!("channel got response {:?}", res);
+                    Ok(framed)
+                }).map_err(|_| ())
+            }).map_err(|()| io::Error::new(ErrorKind::Other, "oops"))
         })).unwrap();
     }
 
@@ -214,7 +217,7 @@ mod tests {
     fn two_frames() {
         // Create the event loop that will drive this server
         let string = "http://localhost:3000/segment/chunks".to_string();
-        let req = HttpRequest::post(&string, vec![1, 2, 3, 4]).unwrap()
+        let req = HttpRequest::post(&string, vec![1, 2, 3, 4, 5, 6]).unwrap()
             .header("Content-Type", "text/plain");
 
         let mut core = Core::new().unwrap();
@@ -226,7 +229,7 @@ mod tests {
         let (res, framed) = core.run(req.send(framed)).unwrap();
         println!("hello 1 {:?}", res);
 
-        let req = HttpRequest::post(&string, vec![1, 2, 3]).unwrap()
+        let req = HttpRequest::post(&string, vec![1, 2, 3, 4, 5]).unwrap()
             .header("Content-Type", "text/plain");
 
         let (res, _framed) = core.run(req.send(framed)).unwrap();
