@@ -174,12 +174,31 @@ impl Codec for HttpCodec {
                 println!("num_bytes_remaining = {}", num_bytes_remaining);
                 let buf = buf.drain_to(num_bytes_total - num_bytes_remaining);
 
-                if response.status() == 204 {
+                if response.is_informational() || response.status() == 204 ||
+                    response.status() == 304 {
                     // no content
                     assert!(num_bytes_remaining == 0);
-                    Ok(Some(response))
-                } else {
-                    let length = 13;
+                    return Ok(Some(response));
+                }
+
+                let chunked =
+                    if let Some(ref encoding) = response["Transfer-Encoding"] {
+                        encoding.contains("chunked")
+                    } else {
+                        false
+                    };
+                if chunked {
+                    unimplemented!()
+                }
+
+                let length =
+                    if let Some(ref length) = response["Content-Length"] {
+                        Some(length.parse::<usize>().map_err(|e| Error::new(ErrorKind::Other, e))?)
+                    } else {
+                        None
+                    };
+
+                if let Some(length) = length {
                     if length > num_bytes_remaining {
                         self.state = CodecState::ReadingBody(response);
                         Ok(None) // not enough data
@@ -187,6 +206,9 @@ impl Codec for HttpCodec {
                         response.append(buf.as_slice());
                         Ok(Some(response))
                     }
+                } else {
+                    // legacy HTTP/1.0 mode (close connection)
+                    unimplemented!()
                 }
             }
 

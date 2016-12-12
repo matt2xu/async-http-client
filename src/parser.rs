@@ -70,11 +70,11 @@ named!(header_field<Header>,
         value: take_until_s!("\r\n") >>
         crlf >>
         ({
-            Header {
+            Header::new(
                 // this is safe because is_token only keeps 32 < c < 127
-                name: unsafe { str::from_utf8_unchecked(name) }.to_owned(),
-                value: String::from_utf8_lossy(trim_right(value)).into_owned()
-            }
+                unsafe { str::from_utf8_unchecked(name) }.to_owned(),
+                String::from_utf8_lossy(trim_right(value)).into_owned()
+            )
         })
     )
 );
@@ -99,16 +99,16 @@ mod tests {
 
     #[test]
     fn test_status_line() {
-        assert_eq!(response(&b"HTTP/1.1 404 Not Found\r\n\
+        assert_eq!(response(b"HTTP/1.1 404 Not Found\r\n\
             Host: localhost:3000 \r\n\
             Content-Length: 5\r\n\
             $Dumb!:  \t   \r\n\
             \r\n\
-            12345"[..]),
+            12345"),
             Done(&b"12345"[..], HttpResponse::new((1, 1), 404, vec![
-                Header {name: "Host".to_string(), value: "localhost:3000".to_string()},
-                Header {name: "Content-Length".to_string(), value: "5".to_string()},
-                Header {name: "$Dumb!".to_string(), value: "".to_string()}
+                Header::new("Host", "localhost:3000"),
+                Header::new("Content-Length", "5"),
+                Header::new("$Dumb!", "")
             ])));
     }
 }
