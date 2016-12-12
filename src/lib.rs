@@ -7,7 +7,7 @@ extern crate nom;
 
 use std::borrow::Cow;
 use std::fmt;
-use std::io::{self, ErrorKind, Write};
+use std::io::{self, Error, ErrorKind, Write};
 use std::net::{SocketAddr, ToSocketAddrs};
 
 use futures::{Future, Sink, Stream};
@@ -25,7 +25,12 @@ pub use futures::sync::mpsc;
 
 use url::{Url, ParseError};
 
+use nom::IResult;
+
 pub mod parser;
+mod structs;
+
+pub use structs::{HttpResponse, Header};
 
 pub struct HttpRequest {
     url: Url,
@@ -64,7 +69,7 @@ impl fmt::Display for Method {
 }
 
 impl HttpRequest {
-    pub fn new<U: AsRef<str>>(url: U) -> Result<HttpRequest, ParseError> {
+    pub fn new<U: AsRef<str>>(method: Method, url: U) -> Result<HttpRequest, ParseError> {
         url.as_ref().parse().map(|url: Url| {
             use std::fmt::Write;
 
@@ -75,7 +80,7 @@ impl HttpRequest {
 
             HttpRequest {
                 url: url,
-                method: Method::Get,
+                method: method,
                 headers: vec![],
                 body: vec![]
             }.header("Host", host)
@@ -87,17 +92,20 @@ impl HttpRequest {
         self
     }
 
+    pub fn get<U: AsRef<str>>(url: U) -> Result<HttpRequest, ParseError> {
+        Self::new(Method::Get, url)
+    }
+
     pub fn post<U: AsRef<str>, I: Into<Vec<u8>>>(url: U, body: I) -> Result<HttpRequest, ParseError> {
         let bytes = body.into();
-        let mut req = Self::new(url)?.header("Content-Length", bytes.len().to_string());
-        req.method = Method::Post;
+        let mut req = Self::new(Method::Post, url)?.header("Content-Length", bytes.len().to_string());
         req.body = bytes;
         Ok(req)
     }
 
-    pub fn addr(&self) -> Result<SocketAddr, io::Error> {
+    pub fn addr(&self) -> Result<SocketAddr, Error> {
         let mut addrs = self.url.to_socket_addrs()?;
-        addrs.next().ok_or(io::Error::new(ErrorKind::UnexpectedEof, "no address"))
+        addrs.next().ok_or(Error::new(ErrorKind::UnexpectedEof, "no address"))
     }
 
     /// Returns a future that, given a framed, will resolve to a tuple (response?, framed).
@@ -132,16 +140,19 @@ impl fmt::Display for HttpRequest {
 }
 
 #[derive(Debug)]
-pub struct HttpResponse;
+enum CodecState {
+    ParsingHeaders,
+    ReadingBody(HttpResponse)
+}
 
 #[derive(Debug)]
 pub struct HttpCodec {
-    parsed: bool
+    state: CodecState
 }
 
 impl HttpCodec {
     pub fn new() -> HttpCodec {
-        HttpCodec {parsed: false}
+        HttpCodec {state: CodecState::ParsingHeaders}
     }
 }
 
@@ -149,15 +160,39 @@ impl Codec for HttpCodec {
     type In = HttpResponse;
     type Out = HttpRequest;
 
-    fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<HttpResponse>, io::Error> {
-        let len = buf.len();
-        println!("------- TODO parse response! {} bytes available", len);
-        if len == 0 {
-            Ok(None)
-        } else {
-            buf.drain_to(len);
-            self.parsed = true;
-            Ok(Some(HttpResponse))
+    fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<HttpResponse>, Error> {
+        let num_bytes_total = buf.len();
+        println!("------- TODO parse response! {} bytes available", num_bytes_total);
+        match self.state {
+            CodecState::ParsingHeaders => {
+                let (num_bytes_remaining, mut response) = match parser::response(buf.as_ref()) {
+                    IResult::Incomplete(_) => return Ok(None), // not enough data
+                    IResult::Error(e) => return Err(Error::new(ErrorKind::Other, e)),
+                    IResult::Done(rest, response) => (rest.len(), response)
+                };
+
+                println!("num_bytes_remaining = {}", num_bytes_remaining);
+                let buf = buf.drain_to(num_bytes_total - num_bytes_remaining);
+
+                if response.status() == 204 {
+                    // no content
+                    assert!(num_bytes_remaining == 0);
+                    Ok(Some(response))
+                } else {
+                    let length = 13;
+                    if length > num_bytes_remaining {
+                        self.state = CodecState::ReadingBody(response);
+                        Ok(None) // not enough data
+                    } else {
+                        response.append(buf.as_slice());
+                        Ok(Some(response))
+                    }
+                }
+            }
+
+            CodecState::ReadingBody(_) => {
+                Ok(None)
+            }
         }
     }
 
@@ -173,17 +208,17 @@ mod tests {
     extern crate env_logger;
 
     //use std::env;
-    use std::io::{self, ErrorKind};
+    use std::io::{Error, ErrorKind};
     use std::thread;
     use std::time::Duration;
 
     use super::prelude::*;
     use {HttpRequest, HttpCodec, mpsc};
 
-    #[test]
+    //#[test]
     fn channel() {
         // Create the event loop that will drive this server
-        let string = "http://localhost:3000/segment/chunks".to_string();
+        let string = "http://localhost:3000/post-test".to_string();
         let req = HttpRequest::post(&string, vec![1, 2, 3, 4]).unwrap()
             .header("Content-Type", "text/plain");
 
@@ -195,7 +230,7 @@ mod tests {
 
         thread::spawn(|| {
             for i in 0 .. 4 {
-                let url = "http://localhost:3000/segment/chunks";
+                let url = "http://localhost:3000/post-test";
                 let elements = (0 .. (i + 1)).collect::<Vec<_>>();
                 let req = HttpRequest::post(url, elements).unwrap()
                     .header("Content-Type", "text/plain");
@@ -212,14 +247,14 @@ mod tests {
                     println!("channel got response {:?}", res);
                     Ok(framed)
                 }).map_err(|_| ())
-            }).map_err(|()| io::Error::new(ErrorKind::Other, "oops"))
+            }).map_err(|()| Error::new(ErrorKind::Other, "oops"))
         })).unwrap();
     }
 
     #[test]
     fn two_frames() {
         // Create the event loop that will drive this server
-        let string = "http://localhost:3000/segment/chunks".to_string();
+        let string = "http://localhost:3000/post-test".to_string();
         let req = HttpRequest::post(&string, vec![1, 2, 3, 4, 5, 6]).unwrap()
             .header("Content-Type", "text/plain");
 
@@ -232,9 +267,9 @@ mod tests {
         })).unwrap();
         println!("hello 1 {:?}", res);
 
-        let req = HttpRequest::post(&string, vec![1, 2, 3, 4, 5]).unwrap()
-            .header("Content-Type", "text/plain");
+        thread::sleep(Duration::from_secs(1));
 
+        let req = HttpRequest::get("http://localhost:3000/").unwrap();
         let (res, _framed) = core.run(req.send(framed)).unwrap();
         println!("hello 2 {:?}", res);
     }

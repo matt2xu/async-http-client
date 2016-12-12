@@ -1,6 +1,9 @@
+//! Parser module for HTTP response.
 
 use nom::{IResult, ErrorKind, crlf, is_digit, is_space};
 use nom::IResult::{Done, Error};
+
+use super::{HttpResponse, Header};
 
 use std::str;
 
@@ -17,22 +20,19 @@ fn parse_code(input: &[u8]) -> IResult<&[u8], u32> {
     }
 }
 
-pub enum StatusKind {
-    Informational,
-    Successful,
-    Redirection,
-    ClientError,
-    ServerError
+struct Status {
+    major: u32,
+    minor: u32,
+    code: u32
 }
 
-#[derive(PartialEq, Eq, Debug)]
-pub struct Status {
-    pub major: u32,
-    pub minor: u32,
-    pub code: u32
+impl Status {
+    fn version(&self) -> (u32, u32) {
+        (self.major, self.minor)
+    }
 }
 
-named!(pub status_line<Status>,
+named!(status_line<Status>,
     do_parse!(
         tag!("HTTP/") >>
         major: take_while1!(is_digit) >>
@@ -57,11 +57,6 @@ named!(pub status_line<Status>,
     )
 );
 
-#[derive(PartialEq, Eq, Debug)]
-pub struct Header {
-    name:  String,
-    value: String
-}
 
 fn trim_right(value: &[u8]) -> &[u8] {
     &value[.. value.iter().rposition(|&c| !is_space(c)).map_or(0, |pos| pos + 1)]
@@ -84,48 +79,36 @@ named!(header_field<Header>,
     )
 );
 
-#[derive(PartialEq, Eq, Debug)]
-pub struct Response {
-    pub status: Status,
-    pub headers: Vec<Header>
-}
-
-named!(pub message<Response>,
+named!(pub response<HttpResponse>,
     do_parse!(
         status: status_line >>
         headers: many1!(header_field) >>
         crlf >>
         ({
-            Response {
-                status: status,
-                headers: headers
-            }
+            HttpResponse::new(status.version(), status.code, headers)
         })
     )
 );
 
 #[cfg(test)]
 mod tests {
-    use super::message;
-    use super::{Response, Status, Header};
+    use ::{HttpResponse, Header};
+    use super::{response};
 
     use nom::IResult::Done;
 
     #[test]
     fn test_status_line() {
-        assert_eq!(message(&b"HTTP/1.1 404 Not Found\r\n\
+        assert_eq!(response(&b"HTTP/1.1 404 Not Found\r\n\
             Host: localhost:3000 \r\n\
             Content-Length: 5\r\n\
             $Dumb!:  \t   \r\n\
             \r\n\
             12345"[..]),
-            Done(&b"12345"[..], Response {
-                status: Status {major: 1, minor:1, code: 404},
-                headers: vec![
-                    Header {name: "Host".to_string(), value: "localhost:3000".to_string()},
-                    Header {name: "Content-Length".to_string(), value: "5".to_string()},
-                    Header {name: "$Dumb!".to_string(), value: "".to_string()}
-                ]
-            }));
+            Done(&b"12345"[..], HttpResponse::new((1, 1), 404, vec![
+                Header {name: "Host".to_string(), value: "localhost:3000".to_string()},
+                Header {name: "Content-Length".to_string(), value: "5".to_string()},
+                Header {name: "$Dumb!".to_string(), value: "".to_string()}
+            ])));
     }
 }

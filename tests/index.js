@@ -1,7 +1,13 @@
-const http = require('http');
+const app = require('express')();
 
-const server = http.createServer((req, res) => {
-  res.statusCode = 204;
-  res.end();
+app.get('/', (req, res) => {
+    res.end('hello, world!');
 });
-server.listen(3000);
+
+app.post('/post-test', (req, res) => {
+    res.status(204).end();
+});
+
+app.listen(3000, () => {
+    console.log('Test server running on port 3000!')
+});
