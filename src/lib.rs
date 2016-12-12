@@ -14,6 +14,15 @@ use futures::{Future, Sink, Stream};
 
 use tokio_core::io::{EasyBuf, Codec, Framed, Io, IoFuture};
 
+pub mod prelude {
+    pub use tokio_core::io::Io;
+    pub use tokio_core::net::TcpStream;
+    pub use tokio_core::reactor::Core;
+    pub use futures::{Future, Sink, Stream};
+}
+
+pub use futures::sync::mpsc;
+
 use url::{Url, ParseError};
 
 pub mod parser;
@@ -168,14 +177,8 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    use futures::{Future, Sink, Stream};
-    use futures::sync::mpsc;
-
-    use tokio_core::net::TcpStream;
-    use tokio_core::io::Io;
-    use tokio_core::reactor::Core;
-
-    use {HttpRequest, HttpCodec};
+    use super::prelude::*;
+    use {HttpRequest, HttpCodec, mpsc};
 
     #[test]
     fn channel() {
@@ -223,10 +226,10 @@ mod tests {
         let mut core = Core::new().unwrap();
         let addr = req.addr().unwrap();
         let handle = core.handle();
-        let tcp_stream = core.run(TcpStream::connect(&addr, &handle)).unwrap();
-        let framed = tcp_stream.framed(HttpCodec::new());
-
-        let (res, framed) = core.run(req.send(framed)).unwrap();
+        let (res, framed) = core.run(TcpStream::connect(&addr, &handle).and_then(|connection| {
+            let framed = connection.framed(HttpCodec::new());
+            req.send(framed)
+        })).unwrap();
         println!("hello 1 {:?}", res);
 
         let req = HttpRequest::post(&string, vec![1, 2, 3, 4, 5]).unwrap()
