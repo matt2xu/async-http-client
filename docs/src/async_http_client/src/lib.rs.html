@@ -343,8 +343,61 @@
 <span id="299">299</span>
 <span id="300">300</span>
 <span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
 </pre><pre class='rust '>
 <span class='doccomment'>//! Asynchronous HTTP client.</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! ## Installation</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! Add this to your `Cargo.toml`:</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! ```toml</span>
+<span class='doccomment'>//! [dependencies]</span>
+<span class='doccomment'>//! async-http-client = &quot;0.1&quot;</span>
+<span class='doccomment'>//! ```</span>
+<span class='doccomment'>//! ## Example</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! ```</span>
+<span class='doccomment'>//! extern crate async_http_client;</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! use async_http_client::prelude::*;</span>
+<span class='doccomment'>//! use async_http_client::{HttpRequest, HttpCodec};</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! let req = HttpRequest::get(&quot;http://www.google.com&quot;).unwrap();</span>
+<span class='doccomment'>//! let mut core = Core::new().unwrap();</span>
+<span class='doccomment'>//! let addr = req.addr().unwrap();</span>
+<span class='doccomment'>//! let handle = core.handle();</span>
+<span class='doccomment'>//! let (res, framed) = core.run(TcpStream::connect(&amp;addr, &amp;handle).and_then(|connection| {</span>
+<span class='doccomment'>//!     let framed = connection.framed(HttpCodec::new());</span>
+<span class='doccomment'>//!     req.send(framed)</span>
+<span class='doccomment'>//! })).unwrap();</span>
+<span class='doccomment'>//! println!(&quot;got response {}&quot;, res.unwrap());</span>
+<span class='doccomment'>//! ```</span>
 
 <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>futures</span>;
 <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>tokio_core</span>;
@@ -370,7 +423,6 @@
     <span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>futures</span>::{<span class='ident'>Future</span>, <span class='ident'>Sink</span>, <span class='ident'>Stream</span>};
 }
 
-<span class='doccomment'>/// Reexport futures `mpsc` module for convenience.</span>
 <span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>futures</span>::<span class='ident'>sync</span>::<span class='ident'>mpsc</span>;
 
 <span class='kw'>use</span> <span class='ident'>url</span>::{<span class='ident'>Url</span>, <span class='ident'>ParseError</span>};
