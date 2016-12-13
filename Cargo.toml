@@ -1,7 +1,13 @@
 [package]
 name = "async-http-client"
 version = "0.1.0"
-authors = ["Matthieu Wipliez <matthieu.wipliez@harmonicinc.com>"]
+description = "Asynchronous HTTP client"
+documentation = "http://matt2xu.github.io/async-http-client/"
+repository = "https://github.com/matt2xu/async-http-client/"
+readme = "README.md"
+license = "MIT"
+authors = ["Matthieu Wipliez <matthieu.wipliez@gmail.com>"]
+keywords = ["http", "client", "async", "asynchronous", "futures", "tokio", "parser"]
 
 [dependencies]
 tokio-core = "0.1"

@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Method",""]],"mod":[["mpsc","A multi-producer, single-consumer, futures-aware, FIFO queue with back pressure."],["parser","Parser module for HTTP response."],["prelude","Commonly needed reexports from futures and tokio-core."]],"struct":[["Header",""],["HttpCodec",""],["HttpRequest",""],["HttpResponse",""]]});

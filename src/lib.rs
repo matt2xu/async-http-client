@@ -1,3 +1,5 @@
+//! Asynchronous HTTP client.
+
 extern crate futures;
 extern crate tokio_core;
 extern crate url;
@@ -14,6 +16,7 @@ use futures::{Future, Sink, Stream};
 
 use tokio_core::io::{EasyBuf, Codec, Framed, Io, IoFuture};
 
+/// Commonly needed reexports from futures and tokio-core.
 pub mod prelude {
     pub use tokio_core::io::Io;
     pub use tokio_core::net::TcpStream;
