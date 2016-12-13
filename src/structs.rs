@@ -1,5 +1,7 @@
 //! Definition of structures.
 
+use std::cmp;
+use std::fmt;
 use std::ops::Index;
 
 #[derive(PartialEq, Eq, Debug)]
@@ -17,6 +19,11 @@ impl Header {
     }
 }
 
+impl fmt::Display for Header {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}: {}", self.name, self.value.as_ref().map(|s| s.as_str()).unwrap_or(""))
+    }
+}
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct HttpResponse {
@@ -38,6 +45,10 @@ impl HttpResponse {
 
     pub fn status(&self) -> u32 {
         self.status
+    }
+
+    pub fn is_chunked(&self) -> bool {
+        self["Transfer-Encoding"].as_ref().map_or(false, |encoding| encoding.contains("chunked"))
     }
 
     pub fn is_informational(&self) -> bool {
@@ -63,10 +74,6 @@ impl HttpResponse {
     pub fn append<A: AsRef<[u8]>>(&mut self, buf: A) {
         self.body.extend_from_slice(buf.as_ref());
     }
-
-    fn get(&self, name: &str) -> Option<&Option<String>> {
-        self.headers.iter().find(|header| header.name == name).map(|header| &header.value)
-    }
 }
 
 const NONE: &'static Option<String> = &None;
@@ -75,6 +82,20 @@ impl<'a> Index<&'a str> for HttpResponse {
     type Output = Option<String>;
 
     fn index(&self, name: &str) -> &Option<String> {
-        self.get(name).unwrap_or(NONE)
+        self.headers.iter().find(|header| header.name == name).map(|header| &header.value).unwrap_or(NONE)
+    }
+}
+
+impl fmt::Display for HttpResponse {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "HTTP/{}.{} {}", self.version.0, self.version.1, self.status)?;
+        for header in &self.headers {
+            writeln!(f, "{}", header)?;
+        }
+        write!(f, "body: {} bytes = [", self.body.len())?;
+        for byte in &self.body[0 .. cmp::min(self.body.len(), 30)] {
+            write!(f, "{}", *byte as char)?;
+        }
+        writeln!(f, "...]")
     }
 }

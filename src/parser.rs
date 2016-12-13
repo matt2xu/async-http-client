@@ -41,13 +41,12 @@ named!(status_line<Status>,
         char!(' ') >>
         code: flat_map!(take!(3), parse_code) >>
         char!(' ') >>
-        reason: take_until!("\r\n") >>
-        call!(crlf) >>
+        take_until!("\r\n") >>
+        crlf >>
         ({
             // this is safe because major and minor only contain digits
             let major = unsafe { str::from_utf8_unchecked(major) }.parse().unwrap_or(0);
             let minor = unsafe { str::from_utf8_unchecked(minor) }.parse().unwrap_or(0);
-            println!("reason: {}", str::from_utf8(reason).unwrap_or("invalid reason"));
             Status {
                 major: major,
                 minor: minor,

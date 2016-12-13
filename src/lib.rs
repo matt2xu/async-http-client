@@ -112,7 +112,6 @@ impl HttpRequest {
     pub fn send<T: 'static + Io + Send>(self, framed: Framed<T, HttpCodec>) -> IoFuture<(Option<HttpResponse>, Framed<T, HttpCodec>)> {
         framed.send(self).and_then(|framed| {
             framed.into_future().and_then(|(res, stream)| {
-                println!("for each {:?}", res);
                 Ok((res, stream))
             }).map_err(|(err, _stream)| err)
         }).boxed()
@@ -140,19 +139,57 @@ impl fmt::Display for HttpRequest {
 }
 
 #[derive(Debug)]
-enum CodecState {
-    ParsingHeaders,
-    ReadingBody(HttpResponse)
-}
-
-#[derive(Debug)]
 pub struct HttpCodec {
-    state: CodecState
+    response: Option<HttpResponse>,
+    bytes_left: usize
 }
 
 impl HttpCodec {
     pub fn new() -> HttpCodec {
-        HttpCodec {state: CodecState::ParsingHeaders}
+        HttpCodec {
+            response: None,
+            bytes_left: 0
+        }
+    }
+
+    fn decode_header(&mut self, buf: &mut EasyBuf) -> Result<Option<HttpResponse>, Error> {
+        let (bytes_left, response) = match parser::response(buf.as_ref()) {
+            IResult::Incomplete(_) => return Ok(None), // not enough data
+            IResult::Error(e) => return Err(Error::new(ErrorKind::InvalidData, e)),
+            IResult::Done(rest, response) => (rest.len(), response)
+        };
+
+        // eat parsed bytes
+        let after_header = buf.len() - bytes_left;
+        buf.drain_to(after_header);
+
+        // no content
+        if response.is_informational() || response.status() == 204 ||
+            response.status() == 304 {
+            assert!(bytes_left == 0);
+            return Ok(Some(response));
+        }
+
+        // chunked
+        if response.is_chunked() {
+            unimplemented!()
+        }
+
+        let length =
+            if let Some(ref length) = response["Content-Length"] {
+                Some(length.parse::<usize>().map_err(|e| Error::new(ErrorKind::InvalidData, e))?)
+            } else {
+                None
+            };
+
+        if let Some(length) = length {
+            self.response = Some(response);
+            self.bytes_left = length;
+            return self.decode(buf);
+        } else {
+            // legacy HTTP/1.0 mode (close connection)
+            unimplemented!()
+        }
     }
 }
 
@@ -161,59 +198,21 @@ impl Codec for HttpCodec {
     type Out = HttpRequest;
 
     fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<HttpResponse>, Error> {
-        let num_bytes_total = buf.len();
-        println!("------- TODO parse response! {} bytes available", num_bytes_total);
-        match self.state {
-            CodecState::ParsingHeaders => {
-                let (num_bytes_remaining, mut response) = match parser::response(buf.as_ref()) {
-                    IResult::Incomplete(_) => return Ok(None), // not enough data
-                    IResult::Error(e) => return Err(Error::new(ErrorKind::Other, e)),
-                    IResult::Done(rest, response) => (rest.len(), response)
-                };
-
-                println!("num_bytes_remaining = {}", num_bytes_remaining);
-                let buf = buf.drain_to(num_bytes_total - num_bytes_remaining);
-
-                if response.is_informational() || response.status() == 204 ||
-                    response.status() == 304 {
-                    // no content
-                    assert!(num_bytes_remaining == 0);
-                    return Ok(Some(response));
-                }
-
-                let chunked =
-                    if let Some(ref encoding) = response["Transfer-Encoding"] {
-                        encoding.contains("chunked")
-                    } else {
-                        false
-                    };
-                if chunked {
-                    unimplemented!()
-                }
-
-                let length =
-                    if let Some(ref length) = response["Content-Length"] {
-                        Some(length.parse::<usize>().map_err(|e| Error::new(ErrorKind::Other, e))?)
-                    } else {
-                        None
-                    };
-
-                if let Some(length) = length {
-                    if length > num_bytes_remaining {
-                        self.state = CodecState::ReadingBody(response);
-                        Ok(None) // not enough data
-                    } else {
-                        response.append(buf.as_slice());
-                        Ok(Some(response))
-                    }
+        if self.response.is_none() {
+            self.decode_header(buf)
+        } else {
+            let buf_len = buf.len();
+            println!("{} bytes left to read, got {} bytes", self.bytes_left, buf_len);
+            if buf_len > self.bytes_left {
+                Err(Error::new(ErrorKind::InvalidData, "extraneous data"))
+            } else {
+                self.response.as_mut().map(|res| res.append(buf.drain_to(buf_len).as_slice()));
+                if buf_len == self.bytes_left {
+                    Ok(self.response.take())
                 } else {
-                    // legacy HTTP/1.0 mode (close connection)
-                    unimplemented!()
+                    self.bytes_left -= buf_len;
+                    Ok(None) // not enough data
                 }
-            }
-
-            CodecState::ReadingBody(_) => {
-                Ok(None)
             }
         }
     }
@@ -237,7 +236,7 @@ mod tests {
     use super::prelude::*;
     use {HttpRequest, HttpCodec, mpsc};
 
-    //#[test]
+    #[test]
     fn channel() {
         // Create the event loop that will drive this server
         let string = "http://localhost:3000/post-test".to_string();
@@ -266,7 +265,7 @@ mod tests {
             let framed = connection.framed(HttpCodec::new());
             receiver.fold(framed, |framed, req| {
                 req.send(framed).and_then(|(res, framed)| {
-                    println!("channel got response {:?}", res);
+                    println!("channel got response {}", res.unwrap());
                     Ok(framed)
                 }).map_err(|_| ())
             }).map_err(|()| Error::new(ErrorKind::Other, "oops"))
@@ -287,12 +286,12 @@ mod tests {
             let framed = connection.framed(HttpCodec::new());
             req.send(framed)
         })).unwrap();
-        println!("hello 1 {:?}", res);
+        println!("hello 1 {}", res.unwrap());
 
         thread::sleep(Duration::from_secs(1));
 
         let req = HttpRequest::get("http://localhost:3000/").unwrap();
         let (res, _framed) = core.run(req.send(framed)).unwrap();
-        println!("hello 2 {:?}", res);
+        println!("hello 2 {}", res.unwrap());
     }
 }
