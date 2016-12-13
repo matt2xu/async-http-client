@@ -7,7 +7,10 @@ repository = "https://github.com/matt2xu/async-http-client/"
 readme = "README.md"
 license = "MIT"
 authors = ["Matthieu Wipliez <matthieu.wipliez@gmail.com>"]
-keywords = ["http", "client", "async", "asynchronous", "futures", "tokio", "parser"]
+keywords = ["http", "client", "asynchronous", "futures", "tokio"]
+exclude = [
+    "docs/*",
+]
 
 [dependencies]
 tokio-core = "0.1"
