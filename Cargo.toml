@@ -1,6 +1,6 @@
 [package]
 name = "async-http-client"
-version = "0.1.0"
+version = "0.2.0"
 description = "Asynchronous HTTP client"
 documentation = "http://matt2xu.github.io/async-http-client/"
 repository = "https://github.com/matt2xu/async-http-client/"
@@ -10,6 +10,7 @@ authors = ["Matthieu Wipliez <matthieu.wipliez@gmail.com>"]
 keywords = ["http", "client", "asynchronous", "futures", "tokio"]
 exclude = [
     "docs/*",
+    "tests/*"
 ]
 
 [dependencies]

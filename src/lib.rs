@@ -6,7 +6,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! async-http-client = "0.1"
+//! async-http-client = "0.2"
 //! ```
 //! ## Example
 //!
