@@ -1,5 +1,6 @@
-//! Definition of structures.
+//! Definition of response structure.
 
+use std::ascii::AsciiExt;
 use std::cmp;
 use std::fmt;
 use std::ops::Index;
@@ -47,33 +48,44 @@ impl HttpResponse {
         self.status
     }
 
-    pub fn is_chunked(&self) -> bool {
-        self["Transfer-Encoding"].as_ref().map_or(false, |encoding| encoding.contains("chunked"))
+    /// Returns true if this response has a header with the given name
+    /// that matches the expected value.
+    ///
+    /// Comparisons are made in a case-insensitive manner.
+    pub fn has<K: AsRef<str>, V: AsRef<str>>(&self, name: K, expected: V) -> bool {
+        self[name.as_ref()].as_ref()
+            .map_or(false, |candidate| expected.as_ref().eq_ignore_ascii_case(&candidate))
     }
 
+    /// Returns true if this response has a 1xx Informational status code.
     pub fn is_informational(&self) -> bool {
         self.status >= 100 && self.status < 200
     }
 
+    /// Returns true if this response has a 2xx Successful status code.
     pub fn is_successful(&self) -> bool {
         self.status >= 200 && self.status < 300
     }
 
+    /// Returns true if this response has a 3xx Redirection status code.
     pub fn is_redirection(&self) -> bool {
         self.status >= 300 && self.status < 400
     }
 
+    /// Returns true if this response has a 4xx Client Error status code.
     pub fn is_client_error(&self) -> bool {
         self.status >= 400 && self.status < 500
     }
 
+    /// Returns true if this response isisis a 5xx Server Error status code.
     pub fn is_server_error(&self) -> bool {
         self.status >= 500 && self.status < 600
     }
+}
 
-    pub fn append<A: AsRef<[u8]>>(&mut self, buf: A) {
-        self.body.extend_from_slice(buf.as_ref());
-    }
+/// Appends data to this response's body.
+pub fn append<A: AsRef<[u8]>>(res: &mut HttpResponse, buf: A) {
+    res.body.extend_from_slice(buf.as_ref());
 }
 
 const NONE: &'static Option<String> = &None;
@@ -81,8 +93,13 @@ const NONE: &'static Option<String> = &None;
 impl<'a> Index<&'a str> for HttpResponse {
     type Output = Option<String>;
 
+    /// Retrieve the header with the given name.
+    ///
+    /// Comparison is made in a case-insensitive manner.
     fn index(&self, name: &str) -> &Option<String> {
-        self.headers.iter().find(|header| header.name == name).map(|header| &header.value).unwrap_or(NONE)
+        self.headers.iter()
+            .find(|header| name.eq_ignore_ascii_case(&header.name))
+            .map(|header| &header.value).unwrap_or(NONE)
     }
 }
 

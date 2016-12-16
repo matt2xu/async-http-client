@@ -1,7 +1,8 @@
 const app = require('express')();
 
 app.get('/', (req, res) => {
-    res.end('hello, world!');
+    res.set('Connection', 'close');
+    res.send('hello, world!');
 });
 
 app.post('/post-test', (req, res) => {

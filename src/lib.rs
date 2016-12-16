@@ -29,6 +29,7 @@
 
 pub extern crate futures;
 pub extern crate tokio_core;
+
 extern crate url;
 
 #[macro_use]
@@ -58,9 +59,9 @@ use url::{Url, ParseError};
 use nom::IResult;
 
 pub mod parser;
-mod structs;
+mod response;
 
-pub use structs::{HttpResponse, Header};
+pub use response::{HttpResponse, Header};
 
 pub struct HttpRequest {
     url: Url,
@@ -201,7 +202,7 @@ impl HttpCodec {
         }
 
         // chunked
-        if response.is_chunked() {
+        if response.has("Transfer-Encoding", "chunked") {
             unimplemented!()
         }
 
@@ -236,7 +237,7 @@ impl Codec for HttpCodec {
             if buf_len > self.bytes_left {
                 Err(Error::new(ErrorKind::InvalidData, "extraneous data"))
             } else {
-                self.response.as_mut().map(|res| res.append(buf.drain_to(buf_len).as_slice()));
+                self.response.as_mut().map(|res| response::append(res, buf.drain_to(buf_len).as_slice()));
                 if buf_len == self.bytes_left {
                     Ok(self.response.take())
                 } else {
@@ -321,8 +322,14 @@ mod tests {
 
         thread::sleep(Duration::from_secs(1));
 
+        // should receive a response and then close the connection
         let req = HttpRequest::get("http://localhost:3000/").unwrap();
         let (res, _framed) = core.run(req.send(framed)).unwrap();
-        println!("hello 2 {}", res.unwrap());
+        if let Some(res) = res {
+            println!("hello 2 {}", res);
+            assert!(res.has("Connection", "Close"));
+        } else {
+            assert!(false);
+        }
     }
 }
