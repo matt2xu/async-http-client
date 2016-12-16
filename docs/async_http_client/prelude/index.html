@@ -47,7 +47,7 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a id='src-14' class='srclink' href='../../src/async_http_client/src/lib.rs.html#47-52' title='goto source code'>[src]</a></span></h1>
+               </span><a id='src-14' class='srclink' href='../../src/async_http_client/src/lib.rs.html#48-55' title='goto source code'>[src]</a></span></h1>
 <div class='docblock'><p>Commonly needed reexports from futures and tokio-core.</p>
 </div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
 <table>
@@ -75,6 +75,13 @@ available at possible some later point in time.</p>
                            </td>
                        </tr>
                        <tr class=' module-item'>
+                           <td><a class='trait' href='trait.IntoFuture.html'
+                                  title='async_http_client::prelude::IntoFuture'>IntoFuture</a></td>
+                           <td class='docblock-short'>
+                                <p>Class of types which can be converted themselves into a future.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
                            <td><a class='trait' href='trait.Io.html'
                                   title='async_http_client::prelude::Io'>Io</a></td>
                            <td class='docblock-short'>
@@ -93,6 +100,53 @@ available at possible some later point in time.</p>
                                   title='async_http_client::prelude::Stream'>Stream</a></td>
                            <td class='docblock-short'>
                                 <p>A stream of values, not all of which have been produced yet.</p>
+                           </td>
+                       </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class='fn' href='fn.empty.html'
+                                  title='async_http_client::prelude::empty'>empty</a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a future which never resolves, representing a computation that never
+finishes.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='fn' href='fn.err.html'
+                                  title='async_http_client::prelude::err'>err</a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a &quot;leaf future&quot; from an immediate value of a failed computation.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='fn' href='fn.lazy.html'
+                                  title='async_http_client::prelude::lazy'>lazy</a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a new future which will eventually be the same as the one created
+by the closure provided.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='fn' href='fn.ok.html'
+                                  title='async_http_client::prelude::ok'>ok</a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a &quot;leaf future&quot; from an immediate value of a finished and
+successful computation.</p>
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class='fn' href='fn.result.html'
+                                  title='async_http_client::prelude::result'>result</a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a new &quot;leaf future&quot; which will resolve with the given result.</p>
+                           </td>
+                       </tr></table><h2 id='types' class='section-header'><a href="#types">Type Definitions</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class='type' href='type.BoxFuture.html'
+                                  title='async_http_client::prelude::BoxFuture'>BoxFuture</a></td>
+                           <td class='docblock-short'>
+                                <p>A type alias for <code>Box&lt;Future + Send&gt;</code></p>
                            </td>
                        </tr></table></section>
     <section id='search' class="content hidden"></section>

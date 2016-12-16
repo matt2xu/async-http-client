@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="API documentation for the Rust `parser` mod in crate `async_http_client`.">
-    <meta name="keywords" content="rust, rustlang, rust-lang, parser">
+    <meta name="description" content="API documentation for the Rust `err` fn in crate `async_http_client`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, err">
 
-    <title>async_http_client::parser - Rust</title>
+    <title>async_http_client::prelude::err - Rust</title>
 
     <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
     <link rel="stylesheet" type="text/css" href="../../main.css">
@@ -28,7 +28,7 @@
 
     <nav class="sidebar">
         
-        <p class='location'><a href='../index.html'>async_http_client</a></p><script>window.sidebarCurrent = {name: 'parser', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script>
+        <p class='location'><a href='../index.html'>async_http_client</a>::<wbr><a href='index.html'>prelude</a></p><script>window.sidebarCurrent = {name: 'err', ty: 'fn', relpath: ''};</script><script defer src="sidebar-items.js"></script>
     </nav>
 
     <nav class="sub">
@@ -42,22 +42,23 @@
         </form>
     </nav>
 
-    <section id='main' class="content mod">
-<h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>async_http_client</a>::<wbr><a class='mod' href=''>parser</a></span><span class='out-of-band'><span id='render-detail'>
+    <section id='main' class="content fn">
+<h1 class='fqn'><span class='in-band'>Function <a href='../index.html'>async_http_client</a>::<wbr><a href='index.html'>prelude</a>::<wbr><a class='fn' href=''>err</a></span><span class='out-of-band'><span id='render-detail'>
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a id='src-22' class='srclink' href='../../src/async_http_client/src/parser.rs.html#1-130' title='goto source code'>[src]</a></span></h1>
-<div class='docblock'><p>Parser module for HTTP response.</p>
-</div><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
-<table>
-                       <tr class=' module-item'>
-                           <td><a class='fn' href='fn.response.html'
-                                  title='async_http_client::parser::response'>response</a></td>
-                           <td class='docblock-short'>
-                                
-                           </td>
-                       </tr></table></section>
+               </span><a id='src-135' class='srclink' href='https://docs.rs/futures/0.1/futures/future/err_/fn.err.html?gotosrc=135' title='goto source code'>[src]</a></span></h1>
+<pre class='rust fn'>pub fn err&lt;T,&nbsp;E&gt;(e: E) -&gt; <a class='struct' href='https://docs.rs/futures/0.1/futures/future/err_/struct.Err.html' title='futures::future::err_::Err'>Err</a>&lt;T,&nbsp;E&gt;</pre><div class='docblock'><p>Creates a &quot;leaf future&quot; from an immediate value of a failed computation.</p>
+
+<p>The returned future is similar to <code>done</code> where it will immediately run a
+scheduled callback with the provided value.</p>
+
+<h1 id='examples' class='section-header'><a href='#examples'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>futures</span>::<span class='ident'>future</span>::<span class='op'>*</span>;
+
+<span class='kw'>let</span> <span class='ident'>future_of_err_1</span> <span class='op'>=</span> <span class='ident'>err</span>::<span class='op'>&lt;</span><span class='ident'>u32</span>, <span class='ident'>u32</span><span class='op'>&gt;</span>(<span class='number'>1</span>);<a class='test-arrow' target='_blank' href=''>Run</a></pre>
+</div></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>

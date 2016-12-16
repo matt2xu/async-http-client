@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="API documentation for the Rust `parser` mod in crate `async_http_client`.">
-    <meta name="keywords" content="rust, rustlang, rust-lang, parser">
+    <meta name="description" content="API documentation for the Rust `BoxFuture` type in crate `async_http_client`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, BoxFuture">
 
-    <title>async_http_client::parser - Rust</title>
+    <title>async_http_client::prelude::BoxFuture - Rust</title>
 
     <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
     <link rel="stylesheet" type="text/css" href="../../main.css">
@@ -28,7 +28,7 @@
 
     <nav class="sidebar">
         
-        <p class='location'><a href='../index.html'>async_http_client</a></p><script>window.sidebarCurrent = {name: 'parser', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script>
+        <p class='location'><a href='../index.html'>async_http_client</a>::<wbr><a href='index.html'>prelude</a></p><script>window.sidebarCurrent = {name: 'BoxFuture', ty: 'type', relpath: ''};</script><script defer src="sidebar-items.js"></script>
     </nav>
 
     <nav class="sub">
@@ -42,22 +42,14 @@
         </form>
     </nav>
 
-    <section id='main' class="content mod">
-<h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>async_http_client</a>::<wbr><a class='mod' href=''>parser</a></span><span class='out-of-band'><span id='render-detail'>
+    <section id='main' class="content type">
+<h1 class='fqn'><span class='in-band'>Type Definition <a href='../index.html'>async_http_client</a>::<wbr><a href='index.html'>prelude</a>::<wbr><a class='type' href=''>BoxFuture</a></span><span class='out-of-band'><span id='render-detail'>
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a id='src-22' class='srclink' href='../../src/async_http_client/src/parser.rs.html#1-130' title='goto source code'>[src]</a></span></h1>
-<div class='docblock'><p>Parser module for HTTP response.</p>
-</div><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
-<table>
-                       <tr class=' module-item'>
-                           <td><a class='fn' href='fn.response.html'
-                                  title='async_http_client::parser::response'>response</a></td>
-                           <td class='docblock-short'>
-                                
-                           </td>
-                       </tr></table></section>
+               </span><a id='src-923' class='srclink' href='https://docs.rs/futures/0.1/futures/future/type.BoxFuture.html?gotosrc=923' title='goto source code'>[src]</a></span></h1>
+<pre class='rust typedef'>type BoxFuture&lt;T,&nbsp;E&gt; = <a class='struct' href='https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html' title='alloc::boxed::Box'>Box</a>&lt;<a class='trait' href='../../async_http_client/prelude/trait.Future.html' title='async_http_client::prelude::Future'>Future</a>&lt;Error=E,&nbsp;Item=T&gt; + 'static + <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Send.html' title='core::marker::Send'>Send</a>&gt;;</pre><div class='docblock'><p>A type alias for <code>Box&lt;Future + Send&gt;</code></p>
+</div></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>

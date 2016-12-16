@@ -10,7 +10,7 @@ In your Cargo.toml, add:
 
 ```toml
 [dependencies]
-async-http-client = "0.1.0"
+async-http-client = "0.2"
 ```
 
 ## License

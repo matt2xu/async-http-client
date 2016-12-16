@@ -369,6 +369,19 @@
 <span id="325">325</span>
 <span id="326">326</span>
 <span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
 </pre><pre class='rust '>
 <span class='doccomment'>//! Asynchronous HTTP client.</span>
 <span class='doccomment'>//!</span>
@@ -378,11 +391,11 @@
 <span class='doccomment'>//!</span>
 <span class='doccomment'>//! ```toml</span>
 <span class='doccomment'>//! [dependencies]</span>
-<span class='doccomment'>//! async-http-client = &quot;0.1&quot;</span>
+<span class='doccomment'>//! async-http-client = &quot;0.2&quot;</span>
 <span class='doccomment'>//! ```</span>
 <span class='doccomment'>//! ## Example</span>
 <span class='doccomment'>//!</span>
-<span class='doccomment'>//! ```</span>
+<span class='doccomment'>//! ```no-run</span>
 <span class='doccomment'>//! extern crate async_http_client;</span>
 <span class='doccomment'>//!</span>
 <span class='doccomment'>//! use async_http_client::prelude::*;</span>
@@ -399,9 +412,10 @@
 <span class='doccomment'>//! println!(&quot;got response {}&quot;, res.unwrap());</span>
 <span class='doccomment'>//! ```</span>
 
-<span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>futures</span>;
-<span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>tokio_core</span>;
-<span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>url</span>;
+<span class='kw'>pub</span> <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>futures</span>;
+<span class='kw'>pub</span> <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>tokio_core</span>;
+
+<span class='kw'>pub</span> <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>url</span>;
 
 <span class='attribute'>#[<span class='ident'>macro_use</span>]</span>
 <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>nom</span>;
@@ -420,20 +434,21 @@
     <span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>tokio_core</span>::<span class='ident'>io</span>::<span class='ident'>Io</span>;
     <span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>tokio_core</span>::<span class='ident'>net</span>::<span class='ident'>TcpStream</span>;
     <span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>tokio_core</span>::<span class='ident'>reactor</span>::<span class='ident'>Core</span>;
-    <span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>futures</span>::{<span class='ident'>Future</span>, <span class='ident'>Sink</span>, <span class='ident'>Stream</span>};
-}
 
-<span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>futures</span>::<span class='ident'>sync</span>::<span class='ident'>mpsc</span>;
+    <span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>futures</span>::{<span class='ident'>Future</span>, <span class='ident'>Sink</span>, <span class='ident'>Stream</span>, <span class='ident'>IntoFuture</span>};
+    <span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>futures</span>::<span class='ident'>future</span>::{<span class='ident'>BoxFuture</span>, <span class='ident'>empty</span>, <span class='ident'>err</span>, <span class='ident'>lazy</span>, <span class='ident'>ok</span>, <span class='ident'>result</span>};
+}
 
 <span class='kw'>use</span> <span class='ident'>url</span>::{<span class='ident'>Url</span>, <span class='ident'>ParseError</span>};
 
 <span class='kw'>use</span> <span class='ident'>nom</span>::<span class='ident'>IResult</span>;
 
-<span class='kw'>pub</span> <span class='kw'>mod</span> <span class='ident'>parser</span>;
-<span class='kw'>mod</span> <span class='ident'>structs</span>;
+<span class='kw'>mod</span> <span class='ident'>parser</span>;
+<span class='kw'>mod</span> <span class='ident'>response</span>;
 
-<span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>structs</span>::{<span class='ident'>HttpResponse</span>, <span class='ident'>Header</span>};
+<span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>response</span>::{<span class='ident'>HttpResponse</span>, <span class='ident'>Header</span>};
 
+<span class='doccomment'>/// Representation of an HTTP request.</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>HttpRequest</span> {
     <span class='ident'>url</span>: <span class='ident'>Url</span>,
     <span class='ident'>method</span>: <span class='ident'>Method</span>,
@@ -441,6 +456,7 @@
     <span class='ident'>body</span>: <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>u8</span><span class='op'>&gt;</span>
 }
 
+<span class='doccomment'>/// Representation of an HTTP method.</span>
 <span class='kw'>pub</span> <span class='kw'>enum</span> <span class='ident'>Method</span> {
     <span class='ident'>Get</span>,
     <span class='ident'>Head</span>,
@@ -471,6 +487,7 @@
 }
 
 <span class='kw'>impl</span> <span class='ident'>HttpRequest</span> {
+    <span class='doccomment'>/// Creates a new HTTP request.</span>
     <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>new</span><span class='op'>&lt;</span><span class='ident'>U</span>: <span class='ident'>AsRef</span><span class='op'>&lt;</span><span class='ident'>str</span><span class='op'>&gt;&gt;</span>(<span class='ident'>method</span>: <span class='ident'>Method</span>, <span class='ident'>url</span>: <span class='ident'>U</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>HttpRequest</span>, <span class='ident'>ParseError</span><span class='op'>&gt;</span> {
         <span class='ident'>url</span>.<span class='ident'>as_ref</span>().<span class='ident'>parse</span>().<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>url</span>: <span class='ident'>Url</span><span class='op'>|</span> {
             <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>fmt</span>::<span class='ident'>Write</span>;
@@ -540,6 +557,7 @@
     }
 }
 
+<span class='doccomment'>/// Codec that parses HTTP responses.</span>
 <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Debug</span>)]</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>HttpCodec</span> {
     <span class='ident'>response</span>: <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='ident'>HttpResponse</span><span class='op'>&gt;</span>,
@@ -547,6 +565,7 @@
 }
 
 <span class='kw'>impl</span> <span class='ident'>HttpCodec</span> {
+    <span class='doccomment'>/// Creates a new HTTP codec.</span>
     <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>new</span>() <span class='op'>-&gt;</span> <span class='ident'>HttpCodec</span> {
         <span class='ident'>HttpCodec</span> {
             <span class='ident'>response</span>: <span class='prelude-val'>None</span>,
@@ -573,7 +592,7 @@
         }
 
         <span class='comment'>// chunked</span>
-        <span class='kw'>if</span> <span class='ident'>response</span>.<span class='ident'>is_chunked</span>() {
+        <span class='kw'>if</span> <span class='ident'>response</span>.<span class='ident'>has</span>(<span class='string'>&quot;Transfer-Encoding&quot;</span>, <span class='string'>&quot;chunked&quot;</span>) {
             <span class='macro'>unimplemented</span><span class='macro'>!</span>()
         }
 
@@ -608,7 +627,7 @@
             <span class='kw'>if</span> <span class='ident'>buf_len</span> <span class='op'>&gt;</span> <span class='self'>self</span>.<span class='ident'>bytes_left</span> {
                 <span class='prelude-val'>Err</span>(<span class='ident'>Error</span>::<span class='ident'>new</span>(<span class='ident'>ErrorKind</span>::<span class='ident'>InvalidData</span>, <span class='string'>&quot;extraneous data&quot;</span>))
             } <span class='kw'>else</span> {
-                <span class='self'>self</span>.<span class='ident'>response</span>.<span class='ident'>as_mut</span>().<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>res</span><span class='op'>|</span> <span class='ident'>res</span>.<span class='ident'>append</span>(<span class='ident'>buf</span>.<span class='ident'>drain_to</span>(<span class='ident'>buf_len</span>).<span class='ident'>as_slice</span>()));
+                <span class='self'>self</span>.<span class='ident'>response</span>.<span class='ident'>as_mut</span>().<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>res</span><span class='op'>|</span> <span class='ident'>response</span>::<span class='ident'>append</span>(<span class='ident'>res</span>, <span class='ident'>buf</span>.<span class='ident'>drain_to</span>(<span class='ident'>buf_len</span>).<span class='ident'>as_slice</span>()));
                 <span class='kw'>if</span> <span class='ident'>buf_len</span> <span class='op'>==</span> <span class='self'>self</span>.<span class='ident'>bytes_left</span> {
                     <span class='prelude-val'>Ok</span>(<span class='self'>self</span>.<span class='ident'>response</span>.<span class='ident'>take</span>())
                 } <span class='kw'>else</span> {
@@ -636,7 +655,8 @@
     <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>time</span>::<span class='ident'>Duration</span>;
 
     <span class='kw'>use</span> <span class='kw'>super</span>::<span class='ident'>prelude</span>::<span class='op'>*</span>;
-    <span class='kw'>use</span> {<span class='ident'>HttpRequest</span>, <span class='ident'>HttpCodec</span>, <span class='ident'>mpsc</span>};
+    <span class='kw'>use</span> <span class='kw'>super</span>::<span class='ident'>futures</span>::<span class='ident'>sync</span>::<span class='ident'>mpsc</span>;
+    <span class='kw'>use</span> {<span class='ident'>HttpRequest</span>, <span class='ident'>HttpCodec</span>};
 
     <span class='attribute'>#[<span class='ident'>test</span>]</span>
     <span class='kw'>fn</span> <span class='ident'>channel</span>() {
@@ -692,9 +712,15 @@
 
         <span class='ident'>thread</span>::<span class='ident'>sleep</span>(<span class='ident'>Duration</span>::<span class='ident'>from_secs</span>(<span class='number'>1</span>));
 
+        <span class='comment'>// should receive a response and then close the connection</span>
         <span class='kw'>let</span> <span class='ident'>req</span> <span class='op'>=</span> <span class='ident'>HttpRequest</span>::<span class='ident'>get</span>(<span class='string'>&quot;http://localhost:3000/&quot;</span>).<span class='ident'>unwrap</span>();
         <span class='kw'>let</span> (<span class='ident'>res</span>, <span class='ident'>_framed</span>) <span class='op'>=</span> <span class='ident'>core</span>.<span class='ident'>run</span>(<span class='ident'>req</span>.<span class='ident'>send</span>(<span class='ident'>framed</span>)).<span class='ident'>unwrap</span>();
-        <span class='macro'>println</span><span class='macro'>!</span>(<span class='string'>&quot;hello 2 {}&quot;</span>, <span class='ident'>res</span>.<span class='ident'>unwrap</span>());
+        <span class='kw'>if</span> <span class='kw'>let</span> <span class='prelude-val'>Some</span>(<span class='ident'>res</span>) <span class='op'>=</span> <span class='ident'>res</span> {
+            <span class='macro'>println</span><span class='macro'>!</span>(<span class='string'>&quot;hello 2 {}&quot;</span>, <span class='ident'>res</span>);
+            <span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>res</span>.<span class='ident'>is</span>(<span class='string'>&quot;Connection&quot;</span>, <span class='string'>&quot;close&quot;</span>));
+        } <span class='kw'>else</span> {
+            <span class='macro'>assert</span><span class='macro'>!</span>(<span class='bool-val'>false</span>);
+        }
     }
 }
 </pre>

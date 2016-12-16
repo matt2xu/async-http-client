@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="API documentation for the Rust `parser` mod in crate `async_http_client`.">
-    <meta name="keywords" content="rust, rustlang, rust-lang, parser">
+    <meta name="description" content="API documentation for the Rust `empty` fn in crate `async_http_client`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, empty">
 
-    <title>async_http_client::parser - Rust</title>
+    <title>async_http_client::prelude::empty - Rust</title>
 
     <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
     <link rel="stylesheet" type="text/css" href="../../main.css">
@@ -28,7 +28,7 @@
 
     <nav class="sidebar">
         
-        <p class='location'><a href='../index.html'>async_http_client</a></p><script>window.sidebarCurrent = {name: 'parser', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script>
+        <p class='location'><a href='../index.html'>async_http_client</a>::<wbr><a href='index.html'>prelude</a></p><script>window.sidebarCurrent = {name: 'empty', ty: 'fn', relpath: ''};</script><script defer src="sidebar-items.js"></script>
     </nav>
 
     <nav class="sub">
@@ -42,22 +42,17 @@
         </form>
     </nav>
 
-    <section id='main' class="content mod">
-<h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>async_http_client</a>::<wbr><a class='mod' href=''>parser</a></span><span class='out-of-band'><span id='render-detail'>
+    <section id='main' class="content fn">
+<h1 class='fqn'><span class='in-band'>Function <a href='../index.html'>async_http_client</a>::<wbr><a href='index.html'>prelude</a>::<wbr><a class='fn' href=''>empty</a></span><span class='out-of-band'><span id='render-detail'>
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a id='src-22' class='srclink' href='../../src/async_http_client/src/parser.rs.html#1-130' title='goto source code'>[src]</a></span></h1>
-<div class='docblock'><p>Parser module for HTTP response.</p>
-</div><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
-<table>
-                       <tr class=' module-item'>
-                           <td><a class='fn' href='fn.response.html'
-                                  title='async_http_client::parser::response'>response</a></td>
-                           <td class='docblock-short'>
-                                
-                           </td>
-                       </tr></table></section>
+               </span><a id='src-117' class='srclink' href='https://docs.rs/futures/0.1/futures/future/empty/fn.empty.html?gotosrc=117' title='goto source code'>[src]</a></span></h1>
+<pre class='rust fn'>pub fn empty&lt;T,&nbsp;E&gt;() -&gt; <a class='struct' href='https://docs.rs/futures/0.1/futures/future/empty/struct.Empty.html' title='futures::future::empty::Empty'>Empty</a>&lt;T,&nbsp;E&gt;</pre><div class='docblock'><p>Creates a future which never resolves, representing a computation that never
+finishes.</p>
+
+<p>The returned future will forever return <code>Async::NotReady</code>.</p>
+</div></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>
