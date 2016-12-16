@@ -10,7 +10,7 @@
 //! ```
 //! ## Example
 //!
-//! ```
+//! ```no-run
 //! extern crate async_http_client;
 //!
 //! use async_http_client::prelude::*;
@@ -27,8 +27,8 @@
 //! println!("got response {}", res.unwrap());
 //! ```
 
-extern crate futures;
-extern crate tokio_core;
+pub extern crate futures;
+pub extern crate tokio_core;
 extern crate url;
 
 #[macro_use]
@@ -48,10 +48,10 @@ pub mod prelude {
     pub use tokio_core::io::Io;
     pub use tokio_core::net::TcpStream;
     pub use tokio_core::reactor::Core;
-    pub use futures::{Future, Sink, Stream};
-}
 
-pub use futures::sync::mpsc;
+    pub use futures::{Future, Sink, Stream, IntoFuture};
+    pub use futures::future::{BoxFuture, empty, err, lazy, ok, result};
+}
 
 use url::{Url, ParseError};
 
@@ -264,7 +264,8 @@ mod tests {
     use std::time::Duration;
 
     use super::prelude::*;
-    use {HttpRequest, HttpCodec, mpsc};
+    use super::futures::sync::mpsc;
+    use {HttpRequest, HttpCodec};
 
     #[test]
     fn channel() {
