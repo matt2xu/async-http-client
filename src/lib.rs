@@ -30,7 +30,7 @@
 pub extern crate futures;
 pub extern crate tokio_core;
 
-extern crate url;
+pub extern crate url;
 
 #[macro_use]
 extern crate nom;
@@ -58,11 +58,12 @@ use url::{Url, ParseError};
 
 use nom::IResult;
 
-pub mod parser;
+mod parser;
 mod response;
 
 pub use response::{HttpResponse, Header};
 
+/// Representation of an HTTP request.
 pub struct HttpRequest {
     url: Url,
     method: Method,
@@ -70,6 +71,7 @@ pub struct HttpRequest {
     body: Vec<u8>
 }
 
+/// Representation of an HTTP method.
 pub enum Method {
     Get,
     Head,
@@ -100,6 +102,7 @@ impl fmt::Display for Method {
 }
 
 impl HttpRequest {
+    /// Creates a new HTTP request.
     pub fn new<U: AsRef<str>>(method: Method, url: U) -> Result<HttpRequest, ParseError> {
         url.as_ref().parse().map(|url: Url| {
             use std::fmt::Write;
@@ -169,6 +172,7 @@ impl fmt::Display for HttpRequest {
     }
 }
 
+/// Codec that parses HTTP responses.
 #[derive(Debug)]
 pub struct HttpCodec {
     response: Option<HttpResponse>,
@@ -176,6 +180,7 @@ pub struct HttpCodec {
 }
 
 impl HttpCodec {
+    /// Creates a new HTTP codec.
     pub fn new() -> HttpCodec {
         HttpCodec {
             response: None,
@@ -327,7 +332,7 @@ mod tests {
         let (res, _framed) = core.run(req.send(framed)).unwrap();
         if let Some(res) = res {
             println!("hello 2 {}", res);
-            assert!(res.has("Connection", "Close"));
+            assert!(res.is("Connection", "close"));
         } else {
             assert!(false);
         }
