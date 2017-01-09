@@ -145,9 +145,7 @@ impl HttpRequest {
     /// Returns a future that, given a framed, will resolve to a tuple (response?, framed).
     pub fn send<T: 'static + Io + Send>(self, framed: Framed<T, HttpCodec>) -> IoFuture<(Option<HttpResponse>, Framed<T, HttpCodec>)> {
         framed.send(self).and_then(|framed| {
-            framed.into_future().and_then(|(res, stream)| {
-                Ok((res, stream))
-            }).map_err(|(err, _stream)| err)
+            framed.into_future().map_err(|(err, _stream)| err)
         }).boxed()
     }
 }
