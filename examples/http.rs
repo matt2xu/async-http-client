@@ -12,8 +12,7 @@ fn main() {
     let addr = req.addr().unwrap();
     let handle = core.handle();
     let (res, _) = core.run(TcpStream::connect(&addr, &handle).and_then(|connection| {
-        let framed = connection.framed(HttpCodec::new());
-        req.send(framed)
+        req.send(connection)
     })).unwrap();
     println!("got response {}", res.unwrap());
 }

@@ -20,9 +20,8 @@
 //! let mut core = Core::new().unwrap();
 //! let addr = req.addr().unwrap();
 //! let handle = core.handle();
-//! let (res, framed) = core.run(TcpStream::connect(&addr, &handle).and_then(|connection| {
-//!     let framed = connection.framed(HttpCodec::new());
-//!     req.send(framed)
+//! let (res, io) = core.run(TcpStream::connect(&addr, &handle).and_then(|connection| {
+//!     req.send(connection)
 //! })).unwrap();
 //! println!("got response {}", res.unwrap());
 //! ```
@@ -163,14 +162,15 @@ impl HttpRequest {
     /// Returns a future that, given a framed, will resolve to a tuple (response?, framed).
     pub fn send<T>(
         self,
-        framed: Framed<T, HttpCodec>,
-    ) -> IoFuture<(Option<HttpResponse>, Framed<T, HttpCodec>)>
+        io: T,
+    ) -> IoFuture<(Option<HttpResponse>, T)>
     where
         T: 'static + AsyncRead + AsyncWrite + Send,
     {
+        let framed = io.framed(HttpCodec::new());
         Box::new(framed
             .send(self)
-            .and_then(|framed| framed.into_future().map_err(|(err, _stream)| err)))
+            .and_then(|framed| framed.into_future().map(|(res, framed)| (res, framed.into_inner())).map_err(|(err, _stream)| err)))
     }
 }
 
@@ -300,7 +300,7 @@ mod tests {
 
     use super::prelude::*;
     use super::futures::sync::mpsc;
-    use {HttpRequest, HttpCodec};
+    use HttpRequest;
 
     #[test]
     fn channel() {
@@ -329,11 +329,10 @@ mod tests {
 
 
         let _framed = core.run(TcpStream::connect(&addr, &handle).and_then(|connection| {
-            let framed = connection.framed(HttpCodec::new());
-            receiver.fold(framed, |framed, req| {
-                req.send(framed).and_then(|(res, framed)| {
+            receiver.fold(connection, |connection, req| {
+                req.send(connection).and_then(|(res, connection)| {
                     println!("channel got response {}", res.unwrap());
-                    Ok(framed)
+                    Ok(connection)
                 }).map_err(|_| ())
             }).map_err(|()| Error::new(ErrorKind::Other, "oops"))
         })).unwrap();
@@ -350,9 +349,8 @@ mod tests {
         let mut core = Core::new().unwrap();
         let addr = req.addr().unwrap();
         let handle = core.handle();
-        let (res, framed) = core.run(TcpStream::connect(&addr, &handle).and_then(|connection| {
-            let framed = connection.framed(HttpCodec::new());
-            req.send(framed)
+        let (res, connection) = core.run(TcpStream::connect(&addr, &handle).and_then(|connection| {
+            req.send(connection)
         })).unwrap();
         println!("hello 1 {}", res.unwrap());
 
@@ -360,7 +358,7 @@ mod tests {
 
         // should receive a response and then close the connection
         let req = HttpRequest::get("http://localhost:3000/").unwrap();
-        let (res, _framed) = core.run(req.send(framed)).unwrap();
+        let (res, _connection) = core.run(req.send(connection)).unwrap();
         if let Some(res) = res {
             println!("hello 2 {}", res);
             assert!(res.is("Connection", "close"));

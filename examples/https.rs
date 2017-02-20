@@ -31,8 +31,7 @@ fn main() {
     });
 
     let (res, _) = core.run(tls_handshake.and_then(|connection| {
-        let framed = connection.framed(HttpCodec::new());
-        let result = req.send(framed);
+        let result = req.send(connection);
         return result;
     })).unwrap();
 
