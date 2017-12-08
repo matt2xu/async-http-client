@@ -104,6 +104,11 @@ impl HttpResponse {
     pub fn is_server_error(&self) -> bool {
         self.status >= 500 && self.status < 600
     }
+
+    /// Returns response body as a byte slice
+    pub fn get_body(&self) -> &[u8] {
+        &self.body
+    }
 }
 
 /// Appends data to this response's body.
