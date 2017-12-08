@@ -260,11 +260,6 @@ impl Decoder for HttpCodec {
             self.decode_header(buf)
         } else {
             let buf_len = buf.len();
-            println!(
-                "{} bytes left to read, got {} bytes",
-                self.bytes_left,
-                buf_len
-            );
             if buf_len > self.bytes_left {
                 Err(Error::new(ErrorKind::InvalidData, "extraneous data"))
             } else {
