@@ -1,6 +1,5 @@
 //! Definition of response structure.
 
-use std::ascii::AsciiExt;
 use std::cmp;
 use std::fmt;
 use std::ops::Index;
@@ -12,19 +11,24 @@ use std::ops::Index;
 #[derive(PartialEq, Eq, Debug)]
 pub struct Header {
     name: String,
-    value: Option<String>
+    value: Option<String>,
 }
 
 pub fn new_header<K: Into<String>, V: Into<String>>(name: K, value: V) -> Header {
     Header {
         name: name.into(),
-        value: Some(value.into())
+        value: Some(value.into()),
     }
 }
 
 impl fmt::Display for Header {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}: {}", self.name, self.value.as_ref().map(|s| s.as_str()).unwrap_or(""))
+        write!(
+            f,
+            "{}: {}",
+            self.name,
+            self.value.as_ref().map(|s| s.as_str()).unwrap_or("")
+        )
     }
 }
 
@@ -34,7 +38,7 @@ pub struct HttpResponse {
     version: (u32, u32),
     status: u32,
     headers: Vec<Header>,
-    body: Vec<u8>
+    body: Vec<u8>,
 }
 
 pub fn new_response(version: (u32, u32), status: u32, headers: Vec<Header>) -> HttpResponse {
@@ -42,7 +46,7 @@ pub fn new_response(version: (u32, u32), status: u32, headers: Vec<Header>) -> H
         version: version,
         status: status,
         headers: headers,
-        body: Vec::new()
+        body: Vec::new(),
     }
 }
 
@@ -57,8 +61,9 @@ impl HttpResponse {
     ///
     /// Comparisons are made in a case-insensitive manner.
     pub fn is<K: AsRef<str>, V: AsRef<str>>(&self, name: K, expected: V) -> bool {
-        self[name.as_ref()].as_ref().map_or(false, |candidate|
-            candidate.eq_ignore_ascii_case(expected.as_ref()))
+        self[name.as_ref()].as_ref().map_or(false, |candidate| {
+            candidate.eq_ignore_ascii_case(expected.as_ref())
+        })
     }
 
     /// Returns true if this response has a header with the given `name`
@@ -68,8 +73,11 @@ impl HttpResponse {
     /// Comparisons are made in a case-insensitive manner. Each value of the comma-separated
     /// list is trimmed before comparison.
     pub fn has<K: AsRef<str>, V: AsRef<str>>(&self, name: K, expected: V) -> bool {
-        self[name.as_ref()].as_ref().map_or(false, |candidate|
-            candidate.split(',').any(|item| item.trim().eq_ignore_ascii_case(expected.as_ref())))
+        self[name.as_ref()].as_ref().map_or(false, |candidate| {
+            candidate.split(',').any(|item| {
+                item.trim().eq_ignore_ascii_case(expected.as_ref())
+            })
+        })
     }
 
     /// Returns true if this response has a 1xx Informational status code.
@@ -112,20 +120,28 @@ impl<'a> Index<&'a str> for HttpResponse {
     ///
     /// Comparison is made in a case-insensitive manner.
     fn index(&self, name: &str) -> &Option<String> {
-        self.headers.iter()
+        self.headers
+            .iter()
             .find(|header| name.eq_ignore_ascii_case(&header.name))
-            .map(|header| &header.value).unwrap_or(NONE)
+            .map(|header| &header.value)
+            .unwrap_or(NONE)
     }
 }
 
 impl fmt::Display for HttpResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "HTTP/{}.{} {}", self.version.0, self.version.1, self.status)?;
+        writeln!(
+            f,
+            "HTTP/{}.{} {}",
+            self.version.0,
+            self.version.1,
+            self.status
+        )?;
         for header in &self.headers {
             writeln!(f, "{}", header)?;
         }
         write!(f, "body: {} bytes = [", self.body.len())?;
-        for byte in &self.body[0 .. cmp::min(self.body.len(), 30)] {
+        for byte in &self.body[0..cmp::min(self.body.len(), 30)] {
             write!(f, "{}", *byte as char)?;
         }
         writeln!(f, "...]")
