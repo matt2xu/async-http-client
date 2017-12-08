@@ -14,7 +14,10 @@ fn is_token(c: u8) -> bool {
 
 fn parse_code(input: &[u8]) -> IResult<&[u8], u32> {
     if input.iter().all(|&c| is_digit(c)) {
-        let sum = input.iter().fold(0, |sum, &c| sum * 10 + (c as char).to_digit(10).unwrap_or(0));
+        let sum = input.iter().fold(
+            0,
+            |sum, &c| sum * 10 + (c as char).to_digit(10).unwrap_or(0),
+        );
         Done(&input[3..], sum)
     } else {
         Error(ErrorKind::Digit)
@@ -24,7 +27,7 @@ fn parse_code(input: &[u8]) -> IResult<&[u8], u32> {
 struct Status {
     major: u32,
     minor: u32,
-    code: u32
+    code: u32,
 }
 
 impl Status {
@@ -59,7 +62,10 @@ named!(status_line<Status>,
 
 
 fn trim_right(value: &[u8]) -> &[u8] {
-    &value[.. value.iter().rposition(|&c| !is_space(c)).map_or(0, |pos| pos + 1)]
+    &value[..value.iter().rposition(|&c| !is_space(c)).map_or(
+        0,
+        |pos| pos + 1,
+    )]
 }
 
 named!(header_field<Header>,
@@ -96,14 +102,16 @@ mod tests {
 
     #[test]
     fn test_response() {
-        let result = response(b"HTTP/1.1 404 Not Found\r\n\
+        let result = response(
+            b"HTTP/1.1 404 Not Found\r\n\
             Host: localhost:3000 \r\n\
             Content-Length: 5\r\n\
             Transfer-Encoding: GZIP , chunked \r\n\
             Connection: keep-alive\r\n\
             $Dumb!:  \t   \r\n\
             \r\n\
-            12345");
+            12345",
+        );
 
         // test parsing
         assert!(result.is_done());
