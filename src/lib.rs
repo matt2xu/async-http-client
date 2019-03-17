@@ -29,6 +29,8 @@
 pub extern crate futures;
 pub extern crate tokio_core;
 pub extern crate tokio_io;
+pub extern crate tokio_codec;
+pub extern crate tokio_tcp;
 pub extern crate bytes;
 
 pub extern crate url;
@@ -46,7 +48,7 @@ use futures::{Future, Sink, Stream};
 use bytes::BytesMut;
 
 use tokio_io::{IoFuture, AsyncRead, AsyncWrite};
-use tokio_io::codec::{Framed, Decoder, Encoder};
+use tokio_codec::{Decoder, Encoder};
 
 use url::{Url, ParseError};
 
@@ -55,7 +57,7 @@ use nom::IResult;
 /// Commonly needed reexports from futures and tokio-core.
 pub mod prelude {
     pub use tokio_io::{AsyncRead, AsyncWrite};
-    pub use tokio_core::net::TcpStream;
+    pub use tokio_tcp::TcpStream;
     pub use tokio_core::reactor::Core;
 
     pub use futures::{Future, Sink, Stream, IntoFuture};
@@ -167,7 +169,7 @@ impl HttpRequest {
     where
         T: 'static + AsyncRead + AsyncWrite + Send,
     {
-        let framed = io.framed(HttpCodec::new());
+        let framed = HttpCodec::new().framed(io);
         Box::new(framed
             .send(self)
             .and_then(|framed| framed.into_future().map(|(res, framed)| (res, framed.into_inner())).map_err(|(err, _stream)| err)))
